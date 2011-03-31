@@ -1,0 +1,5 @@
+_*
+cap*.pcap
+*.so
+*.test
+
