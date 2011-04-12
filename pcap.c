@@ -28,6 +28,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 /*-
 ** pcap - a binding to libpcap
+
+Homepage: <https://github.com/sam-github/pcap-lua>
+Author: <sroberts@wurldtech.com>
+
 */
 /* TODO merge with https://github.com/javierguerragiraldez/pcaplua/blob/master/pcaplua.c ? */
 
@@ -132,9 +136,10 @@ static int lpcap_dump_destroy (lua_State *L)
 }
 
 /*-
-  dumper = dumper:dump(pkt, [timestamp, [wirelen]])
+-- dumper = dumper:dump(pkt, [timestamp, [wirelen]])
 
 pkt to dump
+
 timestamp of packet, defaults to 0, meaning the current time
 wire length of packet, defaults to pkt's length
 
@@ -180,7 +185,7 @@ static int lpcap_dump(lua_State* L)
 }
 
 /*-
-  dumper = dumper:flush()
+-- dumper = dumper:flush()
 
 Flush all dumped packets to disk.
 

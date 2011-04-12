@@ -1,0 +1,23 @@
+= pcap - a binding to libpcap
+
+libpcap is the library behind the commonly use tcpdump utility. It allows
+reading packet captures live from a network, as well as reading and writing
+saved packet captures in "pcap" format. It has been ported to many operating
+systems.
+
+It doesn't implement the full libpcap interface, just what we've needed so far.
+
+To build, see Makefile, it has only been used on Linux and OS X so far.
+
+To decode the packets, you might want to use the lua bindings I've added to libnet, 
+see the lua/ subdirectory of <https://github.com/sam-github/libnet>.
+
+
+<https://github.com/javierguerragiraldez/pcaplua> is an alternative binding, it
+supports a slightly different sub-sets of libpcap. Also, it has tcp/ip parsing
+functions, whereas I use libnet for that.
+
+I'm happy to take patches, of course, and might even add a feature if its easy.
+
+Documentation below, extracted from in-source comments.
+

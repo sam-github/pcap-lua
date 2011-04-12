@@ -66,3 +66,10 @@ test: pcap.test $(TOUT)
 	lua $<
 	touch $@
 
+doc: README.txt
+
+.PHONY: README.txt
+README.txt: README.txt.in pcap.c
+	cp README.txt.in $@
+	luadoc pcap.c >> $@
+
