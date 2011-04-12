@@ -29,9 +29,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 /*-
 ** pcap - a binding to libpcap
 
-Homepage: <https://github.com/sam-github/pcap-lua>
-Author: <sroberts@wurldtech.com>
-
 */
 /* TODO merge with https://github.com/javierguerragiraldez/pcaplua/blob/master/pcaplua.c ? */
 

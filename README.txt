@@ -19,6 +19,9 @@ functions, whereas I use libnet for that.
 
 I'm happy to take patches, of course, and might even add a feature if its easy.
 
+Homepage: <https://github.com/sam-github/pcap-lua>
+Author: <sroberts@wurldtech.com>
+
 Documentation below, extracted from in-source comments.
 
 
@@ -26,9 +29,6 @@ Documentation below, extracted from in-source comments.
 
 
 ** pcap - a binding to libpcap
-
-Homepage: <https://github.com/sam-github/pcap-lua>
-Author: <sroberts@wurldtech.com>
 
 
 
