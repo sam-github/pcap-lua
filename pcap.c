@@ -295,6 +295,8 @@ Returns:
   nil, emsg
     an error ocurred, emsg describes the error
 */
+/* TODO maybe nil,"closed" when for no more packets? */
+/* TODO cap:iterate() -> function(cap) return cap.next, cap end */
 static int lpcap_next(lua_State* L)
 {
     pcap_t* cap = checkpcap(L);
@@ -343,6 +345,30 @@ static int checkpcapopen(lua_State* L, pcap_t** cap, const char* errbuf)
 
 
 /*-
+-- cap = pcap.open_live(source, snaplen, promisc, to_ms)
+
+Open a source device to read packets from.
+
+source is the physical device (defaults to "any")
+snaplen is the size to capture (defaults to 0, max possible)
+promisc is whether to set the device into promiscuous mode (default is false)
+to_ms is the timeout for reads in milliseconds (default is 0, forever)
+
+*/
+static int lpcap_open_live(lua_State *L)
+{
+    const char *source = luaL_optstring(L, 1, "any");
+    int snaplen = luaL_optint(L, 2, 0);
+    int promisc = lua_toboolean(L, 3);
+    int to_ms = luaL_optint(L, 4, 0);
+    pcap_t** cap = pushpcapopen(L);
+    char errbuf[PCAP_ERRBUF_SIZE];
+    *cap = pcap_open_live(source, snaplen, promisc, to_ms, errbuf);
+    return checkpcapopen(L, cap, errbuf);
+}
+
+
+/*-
 -- cap = pcap.open_offline([fname])
 
 fname defaults to "-", stdin.
@@ -360,6 +386,7 @@ static int lpcap_open_offline(lua_State *L)
     *cap = pcap_open_offline(fname, errbuf);
     return checkpcapopen(L, cap, errbuf);
 }
+
 
 /*-
 -- cap = pcap.open_dead([linktype, [caplen]])
@@ -434,6 +461,7 @@ static const luaL_reg pcap_methods[] =
 
 static const luaL_reg pcap_module[] =
 {
+  {"open_live", lpcap_open_live},
   {"open_offline", lpcap_open_offline},
   {"open_dead", lpcap_open_dead},
   {"tv2secs", lpcap_tv2secs},
