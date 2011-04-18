@@ -1,0 +1,39 @@
+#!/usr/bin/env lua5.1
+
+require"pcap"
+
+arg.source = "any"
+arg.snaplen = 0
+arg.promisc = false
+arg.filter = nil
+arg.save = nil
+
+for i,a in ipairs(arg) do
+    local s,e,k,v = a:find("^([^=]+)=(.*)$")
+    arg[k] = v
+end
+
+for k,v in pairs(arg) do
+    if type(k) == "string" then
+        print("arg", k, v)
+    end
+end
+
+cap = assert(pcap.open_live(arg.source, arg.snaplen, arg.promisc))
+
+print("cap", cap)
+
+if arg.save then
+    out = assert(cap:dump_open(arg.save))
+end
+
+repeat
+    capdata, timestamp, wirelen = assert(cap:next())
+
+    print("#", timestamp, wirelen, #capdata)
+
+    if out then
+        assert(out:dump(capdata, timestamp, wirelen))
+    end
+until capdata
+
