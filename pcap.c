@@ -280,23 +280,24 @@ static int pushpkt(lua_State* L, struct pcap_pkthdr* pkt_header, const u_char* p
 
 Example:
 
-for capdata, timestamp, wirelen in cap.next, cap do
-  print(timestamp, wirelen, #capdata)
-end
+    for capdata, timestamp, wirelen in cap.next, cap do
+      print(timestamp, wirelen, #capdata)
+    end
 
+Returns capdata, timestamp, wirelen on sucess:
 
-Returns:
-  capdata, timestamp, wirelen
-    captured data, the timestamp, the wire length
-  nil, "timeout"            
-    timeout on a live capture
-  nil
-    no more packets to be read from a file
-  nil, emsg
-    an error ocurred, emsg describes the error
+- capdata is the captured data
+- timestamp is in seconds, theoretically to microsecond accuracy
+- wirelen is the packets original length, the capdata may be shorter
+
+Returns nil,emsg on falure, where emsg is:
+
+- "timeout", timeout on a live capture
+- "closed", no more packets to be read from a file
+- ... some other string returned from pcap_geterr() describing the error
 */
-/* TODO maybe nil,"closed" when for no more packets? */
-/* TODO cap:iterate() -> function(cap) return cap.next, cap end */
+/* TODO cap:loop() -> function(cap) return cap.next, cap end */
+
 static int lpcap_next(lua_State* L)
 {
     pcap_t* cap = checkpcap(L);
@@ -304,21 +305,23 @@ static int lpcap_next(lua_State* L)
     const u_char* pkt_data = NULL;
     int e = pcap_next_ex(cap, &pkt_header, &pkt_data);
 
+    /* Note: return values don't have names, they are documented numerically
+       in the man page. */
     switch(e) {
-        case 1:
+        case 1: /* success */
             return pushpkt(L, pkt_header, pkt_data);
-        case 0:
+        case 0: /* read live, and timeout occurred */
             lua_pushnil(L);
             lua_pushstring(L, "timeout");
             return 2;
-        default: /* default should not occur.. */
-        case -1:
+        case -2: /* read from a savefile, and no more packets */
+            lua_pushnil(L);
+            lua_pushstring(L, "closed");
+            return 2;
+        case -1: /* an error occurred */
             lua_pushnil(L);
             lua_pushstring(L, pcap_geterr(cap));
             return 2;
-        case -2:
-            lua_pushnil(L);
-            return 1;
     }
     return luaL_error(L, "unreachable");
 }
