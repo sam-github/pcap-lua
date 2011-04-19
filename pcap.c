@@ -102,9 +102,233 @@ static void v_obj_metatable(lua_State* L, const char* regid, const struct luaL_r
     lua_pop(L, 1);
 }
 
-/* Wrap pcap_dumper_t */
 
+/* Registry IDs */
+
+#define L_PCAP_REGID "wt.pcap"
 #define L_PCAP_DUMPER_REGID "wt.pcap_dumper"
+
+
+/* Wrap pcap_t */
+
+static pcap_t* checkpcap(lua_State* L)
+{
+    pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
+
+    luaL_argcheck(L, *cap, 1, "pcap has been destroyed");
+
+    return *cap;
+}
+
+/* pcap open helpers */
+
+static pcap_t** pushpcapopen(lua_State* L)
+{
+    pcap_t** cap = lua_newuserdata(L, sizeof(*cap));
+    *cap = NULL;
+    luaL_getmetatable(L, L_PCAP_REGID);
+    lua_setmetatable(L, -2);
+    return cap;
+}
+
+static int checkpcapopen(lua_State* L, pcap_t** cap, const char* errbuf)
+{
+    if (!*cap) {
+        lua_pushnil(L);
+        lua_pushstring(L, errbuf);
+        return 2;
+    }
+    return 1;
+}
+
+
+/*-
+-- cap = pcap.open_live(source, snaplen, promisc, to_ms)
+
+Open a source device to read packets from.
+
+source is the physical device (defaults to "any")
+snaplen is the size to capture (defaults to 0, max possible)
+promisc is whether to set the device into promiscuous mode (default is false)
+to_ms is the timeout for reads in milliseconds (default is 0, forever)
+
+*/
+static int lpcap_open_live(lua_State *L)
+{
+    const char *source = luaL_optstring(L, 1, "any");
+    int snaplen = luaL_optint(L, 2, 0);
+    int promisc = lua_toboolean(L, 3);
+    int to_ms = luaL_optint(L, 4, 0);
+    pcap_t** cap = pushpcapopen(L);
+    char errbuf[PCAP_ERRBUF_SIZE];
+    *cap = pcap_open_live(source, snaplen, promisc, to_ms, errbuf);
+    return checkpcapopen(L, cap, errbuf);
+}
+
+
+/*-
+-- cap = pcap.open_dead([linktype, [caplen]])
+
+linktype is one of the DLT_ numbers, and defaults to 1 ("DLT_EN10MB")
+caplen is the maximum size of packet, and defaults to ...
+
+caplen defaults to 0, meaning "no limit" (actually, its changed into
+65535 internally, which is what tcpdump does)
+
+Open a pcap that doesn't read from either a live interface, or an offline pcap
+file. It can be used with cap:dump_open() to write a pcap file, or to compile a
+BPF program.
+*/
+/*
+TODO should accept strings as the link type, or have a table of the link
+types:
+    pcap.DLT = { NULL = 0, EN10MB = 1, ... }
+*/
+static int lpcap_open_dead(lua_State *L)
+{
+    int linktype = luaL_optint(L, 1, DLT_EN10MB);
+    int snaplen = luaL_optint(L, 2, 0);
+    pcap_t** cap = pushpcapopen(L);
+
+    /* this is the value tcpdump uses, its way bigger than any known link size */
+    if(!snaplen)
+        snaplen = 0xffff;
+
+    *cap = pcap_open_dead(linktype, snaplen);
+
+    return checkpcapopen(L, cap, "open dead failed for unknown reason");
+}
+
+
+/*-
+-- cap = pcap.open_offline([fname])
+
+fname defaults to "-", stdin.
+
+Open a savefile to read packets from.
+
+FIXME - in retrospect, fname defaulting to stdin causes unsuspecting users to
+think this API is hanging, when they don't actually have a pcap on stdin...
+*/
+static int lpcap_open_offline(lua_State *L)
+{
+    const char *fname = luaL_optstring(L, 1, "-");
+    pcap_t** cap = pushpcapopen(L);
+    char errbuf[PCAP_ERRBUF_SIZE];
+    *cap = pcap_open_offline(fname, errbuf);
+    return checkpcapopen(L, cap, errbuf);
+}
+
+
+/*-
+-- dumper = cap:dump_open([fname])
+
+fname defaults to "-", stdout.
+
+Note that the dumper object is independent of the cap object, once
+it's created.
+*/
+static int lpcap_dump_open(lua_State *L)
+{
+    pcap_t* cap = checkpcap(L);
+    const char* fname = luaL_optstring(L, 2, "-");
+    pcap_dumper_t** dumper = lua_newuserdata(L, sizeof(*dumper));
+
+    *dumper = NULL;
+
+    luaL_getmetatable(L, L_PCAP_DUMPER_REGID);
+    lua_setmetatable(L, -2);
+
+    *dumper = pcap_dump_open(cap, fname);
+
+    if (!*dumper) {
+        lua_pushnil(L);
+        lua_pushstring(L, pcap_geterr(cap));
+        return 2;
+    }
+
+    return 1;
+}
+
+/*-
+-- capdata, timestamp, wirelen = cap:next()
+
+Example:
+
+    for capdata, timestamp, wirelen in cap.next, cap do
+      print(timestamp, wirelen, #capdata)
+    end
+
+Returns capdata, timestamp, wirelen on sucess:
+
+- capdata is the captured data
+- timestamp is in seconds, theoretically to microsecond accuracy
+- wirelen is the packets original length, the capdata may be shorter
+
+Returns nil,emsg on falure, where emsg is:
+
+- "timeout", timeout on a live capture
+- "closed", no more packets to be read from a file
+- ... some other string returned from pcap_geterr() describing the error
+*/
+/* TODO cap:loop() -> function(cap) return cap.next, cap end */
+
+static int lpcap_next(lua_State* L)
+{
+    pcap_t* cap = checkpcap(L);
+    struct pcap_pkthdr* pkt_header = NULL;
+    const u_char* pkt_data = NULL;
+    int e = pcap_next_ex(cap, &pkt_header, &pkt_data);
+
+    /* Note: return values don't have names, they are documented numerically
+       in the man page. */
+    switch(e) {
+        case 1: /* success */
+            return pushpkt(L, pkt_header, pkt_data);
+        case 0: /* read live, and timeout occurred */
+            lua_pushnil(L);
+            lua_pushstring(L, "timeout");
+            return 2;
+        case -2: /* read from a savefile, and no more packets */
+            lua_pushnil(L);
+            lua_pushstring(L, "closed");
+            return 2;
+        case -1: /* an error occurred */
+            lua_pushnil(L);
+            lua_pushstring(L, pcap_geterr(cap));
+            return 2;
+    }
+    return luaL_error(L, "unreachable");
+}
+
+/*-
+-- cap:destroy()
+
+Manually destroy a cap object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
+*/
+static int lpcap_destroy (lua_State *L)
+{
+    pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
+
+    if(*cap)
+        pcap_close(*cap);
+
+    *cap = NULL;
+
+    return 0;
+}
+
+static int pushpkt(lua_State* L, struct pcap_pkthdr* pkt_header, const u_char* pkt_data)
+{
+    lua_pushlstring(L, (const char*)pkt_data, pkt_header->caplen);
+    lua_pushnumber(L, tv2secs(&pkt_header->ts));
+    lua_pushinteger(L, pkt_header->len);
+
+    return 3;
+}
+
+/* Wrap pcap_dumper_t */
 
 static pcap_dumper_t* checkdumper(lua_State* L)
 {
@@ -113,24 +337,6 @@ static pcap_dumper_t* checkdumper(lua_State* L)
     luaL_argcheck(L, *dumper, 1, "pcap dumper has been destroyed");
 
     return *dumper;
-}
-
-/*-
--- dumper:destroy()
-
-Manually destroy a dumper object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
-*/
-static int lpcap_dump_destroy (lua_State *L)
-{
-    pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
-
-    if(*dumper)
-        pcap_dump_close(*dumper);
-
-    *dumper = NULL;
-
-    return 0;
 }
 
 /*-
@@ -204,226 +410,33 @@ static int lpcap_flush(lua_State* L)
 
     return 2;
 }
-    
-
-/* Wrap pcap_t */
-
-#define L_PCAP_REGID "wt.pcap"
-
-static pcap_t* checkpcap(lua_State* L)
-{
-    pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
-
-    luaL_argcheck(L, *cap, 1, "pcap has been destroyed");
-
-    return *cap;
-}
 
 /*-
--- dumper = cap:dump_open([fname])
+-- dumper:destroy()
 
-fname defaults to "-", stdout.
-
-Note that the dumper object is independent of the cap object, once
-it's created.
-*/
-static int lpcap_dump_open(lua_State *L)
-{
-    pcap_t* cap = checkpcap(L);
-    const char* fname = luaL_optstring(L, 2, "-");
-    pcap_dumper_t** dumper = lua_newuserdata(L, sizeof(*dumper));
-
-    *dumper = NULL;
-
-    luaL_getmetatable(L, L_PCAP_DUMPER_REGID);
-    lua_setmetatable(L, -2);
-
-    *dumper = pcap_dump_open(cap, fname);
-
-    if (!*dumper) {
-        lua_pushnil(L);
-        lua_pushstring(L, pcap_geterr(cap));
-        return 2;
-    }
-
-    return 1;
-}
-
-/*-
--- cap:destroy()
-
-Manually destroy a cap object, freeing it's resources (this will happen on
+Manually destroy a dumper object, freeing it's resources (this will happen on
 garbage collection if not done explicitly).
 */
-static int lpcap_destroy (lua_State *L)
+static int lpcap_dump_destroy (lua_State *L)
 {
-    pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
+    pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
 
-    if(*cap)
-        pcap_close(*cap);
+    if(*dumper)
+        pcap_dump_close(*dumper);
 
-    *cap = NULL;
+    *dumper = NULL;
 
     return 0;
 }
 
-static int pushpkt(lua_State* L, struct pcap_pkthdr* pkt_header, const u_char* pkt_data)
-{
-    lua_pushlstring(L, (const char*)pkt_data, pkt_header->caplen);
-    lua_pushnumber(L, tv2secs(&pkt_header->ts));
-    lua_pushinteger(L, pkt_header->len);
 
-    return 3;
-}
-
-/*-
--- capdata, timestamp, wirelen = cap:next()
-
-Example:
-
-    for capdata, timestamp, wirelen in cap.next, cap do
-      print(timestamp, wirelen, #capdata)
-    end
-
-Returns capdata, timestamp, wirelen on sucess:
-
-- capdata is the captured data
-- timestamp is in seconds, theoretically to microsecond accuracy
-- wirelen is the packets original length, the capdata may be shorter
-
-Returns nil,emsg on falure, where emsg is:
-
-- "timeout", timeout on a live capture
-- "closed", no more packets to be read from a file
-- ... some other string returned from pcap_geterr() describing the error
-*/
-/* TODO cap:loop() -> function(cap) return cap.next, cap end */
-
-static int lpcap_next(lua_State* L)
-{
-    pcap_t* cap = checkpcap(L);
-    struct pcap_pkthdr* pkt_header = NULL;
-    const u_char* pkt_data = NULL;
-    int e = pcap_next_ex(cap, &pkt_header, &pkt_data);
-
-    /* Note: return values don't have names, they are documented numerically
-       in the man page. */
-    switch(e) {
-        case 1: /* success */
-            return pushpkt(L, pkt_header, pkt_data);
-        case 0: /* read live, and timeout occurred */
-            lua_pushnil(L);
-            lua_pushstring(L, "timeout");
-            return 2;
-        case -2: /* read from a savefile, and no more packets */
-            lua_pushnil(L);
-            lua_pushstring(L, "closed");
-            return 2;
-        case -1: /* an error occurred */
-            lua_pushnil(L);
-            lua_pushstring(L, pcap_geterr(cap));
-            return 2;
-    }
-    return luaL_error(L, "unreachable");
-}
-
-/* pcap open helpers */
-static pcap_t** pushpcapopen(lua_State* L)
-{
-    pcap_t** cap = lua_newuserdata(L, sizeof(*cap));
-    *cap = NULL;
-    luaL_getmetatable(L, L_PCAP_REGID);
-    lua_setmetatable(L, -2);
-    return cap;
-}
-
-static int checkpcapopen(lua_State* L, pcap_t** cap, const char* errbuf)
-{
-    if (!*cap) {
-        lua_pushnil(L);
-        lua_pushstring(L, errbuf);
-        return 2;
-    }
-    return 1;
-}
-
-
-/*-
--- cap = pcap.open_live(source, snaplen, promisc, to_ms)
-
-Open a source device to read packets from.
-
-source is the physical device (defaults to "any")
-snaplen is the size to capture (defaults to 0, max possible)
-promisc is whether to set the device into promiscuous mode (default is false)
-to_ms is the timeout for reads in milliseconds (default is 0, forever)
-
-*/
-static int lpcap_open_live(lua_State *L)
-{
-    const char *source = luaL_optstring(L, 1, "any");
-    int snaplen = luaL_optint(L, 2, 0);
-    int promisc = lua_toboolean(L, 3);
-    int to_ms = luaL_optint(L, 4, 0);
-    pcap_t** cap = pushpcapopen(L);
-    char errbuf[PCAP_ERRBUF_SIZE];
-    *cap = pcap_open_live(source, snaplen, promisc, to_ms, errbuf);
-    return checkpcapopen(L, cap, errbuf);
-}
-
-
-/*-
--- cap = pcap.open_offline([fname])
-
-fname defaults to "-", stdin.
-
-Open a savefile to read packets from.
-
-FIXME - in retrospect, fname defaulting to stdin causes unsuspecting users to
-think this API is hanging, when they don't actually have a pcap on stdin...
-*/
-static int lpcap_open_offline(lua_State *L)
-{
-    const char *fname = luaL_optstring(L, 1, "-");
-    pcap_t** cap = pushpcapopen(L);
-    char errbuf[PCAP_ERRBUF_SIZE];
-    *cap = pcap_open_offline(fname, errbuf);
-    return checkpcapopen(L, cap, errbuf);
-}
-
-
-/*-
--- cap = pcap.open_dead([linktype, [caplen]])
-
-linktype is one of the DLT_ numbers, and defaults to 1 ("DLT_EN10MB")
-caplen is the maximum size of packet, and defaults to ...
-
-caplen defaults to 0, meaning "no limit" (actually, its changed into
-65535 internally, which is what tcpdump does)
-
-TODO should accept strings as the link type, or have a table of the link
-types:
-    pcap.DLT = { NULL = 0, EN10MB = 1, ... }
-
-Open a pcap that doesn't read from either a live interface, or an offline pcap
-file. It can be used to write a pcap file, or to compile a BPF program.
-*/
-static int lpcap_open_dead(lua_State *L)
-{
-    int linktype = luaL_optint(L, 1, DLT_EN10MB);
-    int snaplen = luaL_optint(L, 2, 0);
-    pcap_t** cap = pushpcapopen(L);
-
-    /* this is the value tcpdump uses, its way bigger than any known link size */
-    if(!snaplen)
-        snaplen = 0xffff;
-
-    *cap = pcap_open_dead(linktype, snaplen);
-
-    return checkpcapopen(L, cap, "open dead failed for unknown reason");
-}
-
+/* timeval to second conversions */
 /* These don't need to be external, but are useful to test timeval conversion from lua. */
+/*-
+-- secs = pcap.tv2secs(seci, useci)
+
+Combine seperate seconds and microseconds into one numeric seconds.
+*/
 static int lpcap_tv2secs(lua_State* L)
 {
     struct timeval tv;
@@ -434,6 +447,11 @@ static int lpcap_tv2secs(lua_State* L)
     return 1;
 }
 
+/*-
+-- seci, useci = pcap.secs2tv(secs)
+
+Split one numeric seconds into seperate seconds and microseconds.
+*/
 static int lpcap_secs2tv(lua_State* L)
 {
     struct timeval tv;
@@ -445,41 +463,42 @@ static int lpcap_secs2tv(lua_State* L)
     return 2;
 }
 
-static const luaL_reg dumper_methods[] =
+static const luaL_reg pcap_module[] =
 {
-  {"__gc", lpcap_dump_destroy},
-  {"close", lpcap_dump_destroy},
-  {"dump", lpcap_dump},
-  {"flush", lpcap_flush},
-  {NULL, NULL}
+    {"open_live", lpcap_open_live},
+    {"open_offline", lpcap_open_offline},
+    {"open_dead", lpcap_open_dead},
+    {"tv2secs", lpcap_tv2secs},
+    {"secs2tv", lpcap_secs2tv},
+    {NULL, NULL}
 };
 
 static const luaL_reg pcap_methods[] =
 {
-  {"dump_open", lpcap_dump_open},
-  {"__gc", lpcap_destroy},
-  {"close", lpcap_destroy},
-  {"next", lpcap_next},
-  {NULL, NULL}
+    {"dump_open", lpcap_dump_open},
+    {"__gc", lpcap_destroy},
+    {"close", lpcap_destroy},
+    {"next", lpcap_next},
+    {NULL, NULL}
 };
 
-static const luaL_reg pcap_module[] =
+static const luaL_reg dumper_methods[] =
 {
-  {"open_live", lpcap_open_live},
-  {"open_offline", lpcap_open_offline},
-  {"open_dead", lpcap_open_dead},
-  {"tv2secs", lpcap_tv2secs},
-  {"secs2tv", lpcap_secs2tv},
-  {NULL, NULL}
+    {"__gc", lpcap_dump_destroy},
+    {"close", lpcap_dump_destroy},
+    {"dump", lpcap_dump},
+    {"flush", lpcap_flush},
+    {NULL, NULL}
 };
+
 
 LUALIB_API int luaopen_pcap (lua_State *L)
 {
-  v_obj_metatable(L, L_PCAP_DUMPER_REGID, dumper_methods);
-  v_obj_metatable(L, L_PCAP_REGID, pcap_methods);
-  luaL_register(L, "pcap", pcap_module);
-  lua_pushstring(L, pcap_lib_version());
-  lua_setfield(L, -2, "_LIB_VERSION");
-  return 1;
+    v_obj_metatable(L, L_PCAP_DUMPER_REGID, dumper_methods);
+    v_obj_metatable(L, L_PCAP_REGID, pcap_methods);
+    luaL_register(L, "pcap", pcap_module);
+    lua_pushstring(L, pcap_lib_version());
+    lua_setfield(L, -2, "_LIB_VERSION");
+    return 1;
 }
 

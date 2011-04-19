@@ -5,36 +5,102 @@ reading packet captures live from a network, as well as reading and writing
 saved packet captures in "pcap" format. It has been ported to many operating
 systems.
 
-It doesn't implement the full libpcap interface, just what we've needed so far.
+The binding doesn't implement the full libpcap API, just what we've needed so
+far.
 
-To build, see Makefile, it has only been used on Linux and OS X so far.
+To build, see Makefile, it supports Linux and OS X.
 
-To decode the packets, you might want to use the lua bindings I've added to libnet, 
-see the lua/ subdirectory of <https://github.com/sam-github/libnet>.
-
-
-<https://github.com/javierguerragiraldez/pcaplua> is an alternative binding, it
-supports a slightly different sub-sets of libpcap. Also, it has tcp/ip parsing
-functions, whereas I use libnet for that.
-
-I'm happy to take patches, of course, and might even add a feature if its easy.
+To decode the packets, you might want to use libnet's lua bindings, see the
+lua/ subdirectory of <https://github.com/sam-github/libnet>.
 
 Homepage: <https://github.com/sam-github/pcap-lua>
 Author: <sroberts@wurldtech.com>
 
-Documentation below, extracted from in-source comments.
+If this doesn't do what you need,
+<https://github.com/javierguerragiraldez/pcaplua> is a binding to a different
+subset of libpcap's API. Also, it has tcp/ip parsing functions, whereas we use
+libnet for that.
 
+
+Documentation:
+
+See below, extracted from in-source comments.
 
 
 
 
 ** pcap - a binding to libpcap
 
+pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_version().
 
 
--- dumper:destroy()
 
-Manually destroy a dumper object, freeing it's resources (this will happen on
+-- cap = pcap.open_live(source, snaplen, promisc, to_ms)
+
+Open a source device to read packets from.
+
+source is the physical device (defaults to "any")
+snaplen is the size to capture (defaults to 0, max possible)
+promisc is whether to set the device into promiscuous mode (default is false)
+to_ms is the timeout for reads in milliseconds (default is 0, forever)
+
+
+
+-- cap = pcap.open_dead([linktype, [caplen]])
+
+linktype is one of the DLT_ numbers, and defaults to 1 ("DLT_EN10MB")
+caplen is the maximum size of packet, and defaults to ...
+
+caplen defaults to 0, meaning "no limit" (actually, its changed into
+65535 internally, which is what tcpdump does)
+
+Open a pcap that doesn't read from either a live interface, or an offline pcap
+file. It can be used with cap:dump_open() to write a pcap file, or to compile a
+BPF program.
+
+
+-- cap = pcap.open_offline([fname])
+
+fname defaults to "-", stdin.
+
+Open a savefile to read packets from.
+
+FIXME - in retrospect, fname defaulting to stdin causes unsuspecting users to
+think this API is hanging, when they don't actually have a pcap on stdin...
+
+
+-- dumper = cap:dump_open([fname])
+
+fname defaults to "-", stdout.
+
+Note that the dumper object is independent of the cap object, once
+it's created.
+
+
+-- capdata, timestamp, wirelen = cap:next()
+
+Example:
+
+    for capdata, timestamp, wirelen in cap.next, cap do
+      print(timestamp, wirelen, #capdata)
+    end
+
+Returns capdata, timestamp, wirelen on sucess:
+
+- capdata is the captured data
+- timestamp is in seconds, theoretically to microsecond accuracy
+- wirelen is the packets original length, the capdata may be shorter
+
+Returns nil,emsg on falure, where emsg is:
+
+- "timeout", timeout on a live capture
+- "closed", no more packets to be read from a file
+- ... some other string returned from pcap_geterr() describing the error
+
+
+-- cap:destroy()
+
+Manually destroy a cap object, freeing it's resources (this will happen on
 garbage collection if not done explicitly).
 
 
@@ -61,61 +127,17 @@ Returns self on sucess.
 Returns nil and an error msg on failure.
 
 
--- dumper = cap:dump_open([fname])
+-- dumper:destroy()
 
-fname defaults to "-", stdout.
-
-Note that the dumper object is independent of the cap object, once
-it's created.
-
-
--- cap:destroy()
-
-Manually destroy a cap object, freeing it's resources (this will happen on
+Manually destroy a dumper object, freeing it's resources (this will happen on
 garbage collection if not done explicitly).
 
 
--- capdata, timestamp, wirelen = cap:next()
+-- secs = pcap.tv2secs(seci, useci)
 
-Example:
-
-for capdata, timestamp, wirelen in cap.next, cap do
-  print(timestamp, wirelen, #capdata)
-end
+Combine seperate seconds and microseconds into one numeric seconds.
 
 
-Returns:
-  capdata, timestamp, wirelen
-    captured data, the timestamp, the wire length
-  nil, "timeout"            
-    timeout on a live capture
-  nil
-    no more packets to be read from a file
-  nil, emsg
-    an error ocurred, emsg describes the error
+-- seci, useci = pcap.secs2tv(secs)
 
-
--- cap = pcap.open_offline([fname])
-
-fname defaults to "-", stdin.
-
-Open a savefile to read packets from.
-
-FIXME - in retrospect, fname defaulting to stdin causes unsuspecting users to
-think this API is hanging, when they don't actually have a pcap on stdin...
-
-
--- cap = pcap.open_dead([linktype, [caplen]])
-
-linktype is one of the DLT_ numbers, and defaults to 1 ("DLT_EN10MB")
-caplen is the maximum size of packet, and defaults to ...
-
-caplen defaults to 0, meaning "no limit" (actually, its changed into
-65535 internally, which is what tcpdump does)
-
-TODO should accept strings as the link type, or have a table of the link
-types:
-    pcap.DLT = { NULL = 0, EN10MB = 1, ... }
-
-Open a pcap that doesn't read from either a live interface, or an offline pcap
-file. It can be used to write a pcap file, or to compile a BPF program.
+Split one numeric seconds into seperate seconds and microseconds.
