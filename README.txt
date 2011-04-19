@@ -35,14 +35,14 @@ pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_versi
 
 
 
--- cap = pcap.open_live(source, snaplen, promisc, to_ms)
+-- cap = pcap.open_live(device, snaplen, promisc, timeout)
 
 Open a source device to read packets from.
 
-source is the physical device (defaults to "any")
-snaplen is the size to capture (defaults to 0, max possible)
-promisc is whether to set the device into promiscuous mode (default is false)
-to_ms is the timeout for reads in milliseconds (default is 0, forever)
+- device is the physical device (defaults to "any")
+- snaplen is the size to capture, where 0 means max possible (defaults to 0)
+- promisc is whether to set the device into promiscuous mode (default is false)
+- timeout is the timeout for reads in seconds (default is 0, return if no packets available)
 
 
 
@@ -75,6 +75,13 @@ fname defaults to "-", stdout.
 
 Note that the dumper object is independent of the cap object, once
 it's created.
+
+
+-- cap = cap:set_filter(filter, nooptimize)
+
+- filter is the filter string, see tcpdump or pcap-filter man page.
+- nooptimize can be true if you don't want the filter optimized during compile
+  (the default is to optimize).
 
 
 -- capdata, timestamp, wirelen = cap:next()
