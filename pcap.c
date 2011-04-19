@@ -29,6 +29,8 @@ THE POSSIBILITY OF SUCH DAMAGE.
 /*-
 ** pcap - a binding to libpcap
 
+pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_version().
+
 */
 /* TODO merge with https://github.com/javierguerragiraldez/pcaplua/blob/master/pcaplua.c ? */
 
@@ -40,6 +42,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/time.h>
 #include <time.h>
 #include <math.h>
+#include <pcap.h>
 
 #include "lua.h"
 #include "lauxlib.h"
@@ -98,8 +101,6 @@ static void v_obj_metatable(lua_State* L, const char* regid, const struct luaL_r
     lua_setfield(L, -2, "__index");
     lua_pop(L, 1);
 }
-
-#include <pcap.h>
 
 /* Wrap pcap_dumper_t */
 
@@ -477,6 +478,8 @@ LUALIB_API int luaopen_pcap (lua_State *L)
   v_obj_metatable(L, L_PCAP_DUMPER_REGID, dumper_methods);
   v_obj_metatable(L, L_PCAP_REGID, pcap_methods);
   luaL_register(L, "pcap", pcap_module);
+  lua_pushstring(L, pcap_lib_version());
+  lua_setfield(L, -2, "_LIB_VERSION");
   return 1;
 }
 
