@@ -272,6 +272,14 @@ Returns nil,emsg on falure, where emsg is:
 - ... some other string returned from pcap_geterr() describing the error
 */
 /* TODO cap:loop() -> function(cap) return cap.next, cap end */
+static int pushpkt(lua_State* L, struct pcap_pkthdr* pkt_header, const u_char* pkt_data)
+{
+    lua_pushlstring(L, (const char*)pkt_data, pkt_header->caplen);
+    lua_pushnumber(L, tv2secs(&pkt_header->ts));
+    lua_pushinteger(L, pkt_header->len);
+
+    return 3;
+}
 
 static int lpcap_next(lua_State* L)
 {
@@ -317,15 +325,6 @@ static int lpcap_destroy (lua_State *L)
     *cap = NULL;
 
     return 0;
-}
-
-static int pushpkt(lua_State* L, struct pcap_pkthdr* pkt_header, const u_char* pkt_data)
-{
-    lua_pushlstring(L, (const char*)pkt_data, pkt_header->caplen);
-    lua_pushnumber(L, tv2secs(&pkt_header->ts));
-    lua_pushinteger(L, pkt_header->len);
-
-    return 3;
 }
 
 /* Wrap pcap_dumper_t */
