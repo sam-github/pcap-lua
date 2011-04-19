@@ -4,13 +4,11 @@
 
 default: build
 
-BINDING=pcap.so
-
 UNAME=$(shell uname)
 
 include $(UNAME).mak
 
-build: $(BINDING)
+build: pcap.so
 
 prefix=/usr
 
@@ -29,14 +27,9 @@ CWARNS = -Wall \
   -Wshadow \
   -Wwrite-strings
 
-DNETDEFS=$(shell dnet-config --cflags)
-LNETDEFS=$(shell sh ../libnet/libnet-config --cflags --defines) 
-COPT=-O2 -DNDEBUG -g
-CFLAGS=$(CWARNS) $(CDEFS) $(CLUA) $(LDFLAGS) -I../libnet/include -L../libnet/src/.libs/
-LDLIBS=$(LLUA)
-
-LDDNET=$(shell dnet-config --libs)
-LDLNET=$(shell sh ../libnet/libnet-config --libs)
+COPT=-O2 -DNDEBUG
+CFLAGS=$(CWARNS) $(CDEFS) $(CLUA) $(LDFLAGS) $(shell pcap-config --cflags)
+LDLIBS=$(LLUA) $(shell pcap-config --libs)
 
 CC.SO := $(CC) $(COPT) $(CFLAGS)
 
@@ -44,7 +37,6 @@ CC.SO := $(CC) $(COPT) $(CFLAGS)
 	$(CC.SO) -o $@ $^ $(LDLIBS)
 
 pcap.so: pcap.c
-pcap.so: LDLIBS+=-lpcap
 
 TNET=$(wildcard test-*.lua)
 TOUT=$(TNET:.lua=.test)
