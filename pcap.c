@@ -32,7 +32,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_version().
 
 */
-/* TODO merge with https://github.com/javierguerragiraldez/pcaplua/blob/master/pcaplua.c ? */
 
 #include <assert.h>
 #include <errno.h>
