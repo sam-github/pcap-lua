@@ -52,6 +52,8 @@ print"+ok"
 
 print"pcap test"
 
+print("pcap lib version", assert(pcap._LIB_VERSION))
+
 cap = assert(pcap.open_dead())
 dmp = assert(cap:dump_open("cap0.pcap"))
 

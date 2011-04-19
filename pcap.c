@@ -103,13 +103,17 @@ static void v_obj_metatable(lua_State* L, const char* regid, const struct luaL_r
 }
 
 
-/* Registry IDs */
+/* Registry IDs and helper functions */
 
 #define L_PCAP_REGID "wt.pcap"
 #define L_PCAP_DUMPER_REGID "wt.pcap_dumper"
 
-
-/* Wrap pcap_t */
+static int pusherr(lua_State* L, pcap_t* cap)
+{
+    lua_pushnil(L);
+    lua_pushstring(L, pcap_geterr(cap));
+    return 2;
+}
 
 static pcap_t* checkpcap(lua_State* L)
 {
@@ -120,7 +124,6 @@ static pcap_t* checkpcap(lua_State* L)
     return *cap;
 }
 
-/* pcap open helpers */
 
 static pcap_t** pushpcapopen(lua_State* L)
 {
@@ -142,26 +145,30 @@ static int checkpcapopen(lua_State* L, pcap_t** cap, const char* errbuf)
 }
 
 
+/* Wrap pcap_t */
+
 /*-
--- cap = pcap.open_live(source, snaplen, promisc, to_ms)
+-- cap = pcap.open_live(device, snaplen, promisc, timeout)
 
 Open a source device to read packets from.
 
-source is the physical device (defaults to "any")
-snaplen is the size to capture (defaults to 0, max possible)
-promisc is whether to set the device into promiscuous mode (default is false)
-to_ms is the timeout for reads in milliseconds (default is 0, forever)
+- device is the physical device (defaults to "any")
+- snaplen is the size to capture, where 0 means max possible (defaults to 0)
+- promisc is whether to set the device into promiscuous mode (default is false)
+- timeout is the timeout for reads in seconds (default is 0, return if no packets available)
 
 */
 static int lpcap_open_live(lua_State *L)
 {
-    const char *source = luaL_optstring(L, 1, "any");
+    const char *device = luaL_optstring(L, 1, "any");
     int snaplen = luaL_optint(L, 2, 0);
     int promisc = lua_toboolean(L, 3);
-    int to_ms = luaL_optint(L, 4, 0);
+    int to_ms = 1000 * luaL_optint(L, 4, 0); /* convert to milliseconds */
     pcap_t** cap = pushpcapopen(L);
     char errbuf[PCAP_ERRBUF_SIZE];
-    *cap = pcap_open_live(source, snaplen, promisc, to_ms, errbuf);
+    if(snaplen == 0)
+        snaplen = 0xffff;
+    *cap = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
     return checkpcapopen(L, cap, errbuf);
 }
 
@@ -242,13 +249,48 @@ static int lpcap_dump_open(lua_State *L)
     *dumper = pcap_dump_open(cap, fname);
 
     if (!*dumper) {
-        lua_pushnil(L);
-        lua_pushstring(L, pcap_geterr(cap));
-        return 2;
+        return pusherr(L, cap);
     }
 
     return 1;
 }
+
+
+/*-
+-- cap = cap:set_filter(filter, nooptimize)
+
+- filter is the filter string, see tcpdump or pcap-filter man page.
+- nooptimize can be true if you don't want the filter optimized during compile
+  (the default is to optimize).
+*/
+static int lpcap_set_filter(lua_State* L)
+{
+    pcap_t* cap = checkpcap(L);
+    const char* filter = luaL_checkstring(L, 2);
+    int optimize = !lua_toboolean(L, 3);
+    bpf_u_int32 netmask = PCAP_NETMASK_UNKNOWN; /* TODO get device from registry, and call pcap_lookup_net()*/
+    int ret = 0;
+    struct bpf_program program = { 0 };
+
+    ret = pcap_compile(cap, &program, filter, optimize, netmask);
+
+    if(ret < 0) {
+        return pusherr(L, cap);
+    }
+
+    ret = pcap_setfilter(cap, &program);
+
+    pcap_freecode(&program);
+
+    if(ret < 0) {
+        return pusherr(L, cap);
+    }
+
+    lua_settop(L, 1);
+
+    return 1;
+}
+
 
 /*-
 -- capdata, timestamp, wirelen = cap:next()
@@ -302,9 +344,7 @@ static int lpcap_next(lua_State* L)
             lua_pushstring(L, "closed");
             return 2;
         case -1: /* an error occurred */
-            lua_pushnil(L);
-            lua_pushstring(L, pcap_geterr(cap));
-            return 2;
+            return pusherr(L, cap);
     }
     return luaL_error(L, "unreachable");
 }
@@ -475,9 +515,10 @@ static const luaL_reg pcap_module[] =
 static const luaL_reg pcap_methods[] =
 {
     {"dump_open", lpcap_dump_open},
+    {"set_filter", lpcap_set_filter},
+    {"next", lpcap_next},
     {"__gc", lpcap_destroy},
     {"close", lpcap_destroy},
-    {"next", lpcap_next},
     {NULL, NULL}
 };
 

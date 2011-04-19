@@ -2,11 +2,12 @@
 
 require"pcap"
 
-arg.source = "any"
+arg.device = "any"
 arg.snaplen = 0
 arg.promisc = false
 arg.filter = nil
 arg.save = nil
+arg.timeout = 1
 
 for i,a in ipairs(arg) do
     local s,e,k,v = a:find("^([^=]+)=(.*)$")
@@ -19,7 +20,7 @@ for k,v in pairs(arg) do
     end
 end
 
-cap = assert(pcap.open_live(arg.source, arg.snaplen, arg.promisc))
+cap = assert(pcap.open_live(arg.device, arg.snaplen, arg.promisc, arg.timeout))
 
 print("cap", cap)
 
@@ -27,13 +28,35 @@ if arg.save then
     out = assert(cap:dump_open(arg.save))
 end
 
-repeat
-    capdata, timestamp, wirelen = assert(cap:next())
+if arg.filter then
+    assert(cap:set_filter(arg.filter))
+end
 
+function loop(cap)
+    local n
+    n = function(cap)
+        local capdata, timestamp, wirelen = cap:next()
+        if capdata then
+            return capdata, timestamp, wirelen
+        end
+        local emsg = timestamp
+        if emsg == "closed" then
+            return nil
+        end
+        if emsg == "timeout" then
+            return n(cap)
+        end
+        assert(nil, timestamp)
+    end
+    
+    return n, cap
+end
+
+for capdata, timestamp, wirelen in loop(cap) do
     print("#", timestamp, wirelen, #capdata)
 
     if out then
         assert(out:dump(capdata, timestamp, wirelen))
     end
-until capdata
+end
 
