@@ -8,11 +8,13 @@ UNAME=$(shell uname)
 
 include $(UNAME).mak
 
-build: pcap.so
+BINDING=pcap.so
 
-prefix=/usr
+build: $(BINDING)
 
-SODIR = $(DESTDIR)$(prefix)/lib/lua/5.1/
+prefix=/usr/local
+
+SODIR = $(DESTDIR)/$(prefix)/lib/lua/5.1/
 
 .PHONY: install
 install: $(BINDING)
