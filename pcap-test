@@ -85,5 +85,14 @@ assertnext(cap, eth, nil, #eth)
 assertnext(cap, "pcap closed", nil, #"pcap closed")
 assertnext(cap, nil, nil, nil)
 
+print"dlt table test"
+
+assert(pcap.DLT)
+assert(pcap.DLT.EN10MB == 1)
+assert(pcap.DLT.LINUX_SLL == 113)
+assert(pcap.DLT[1] == "EN10MB")
+assert(pcap.DLT[113] == "LINUX_SLL")
+
 print"+ok"
+
 

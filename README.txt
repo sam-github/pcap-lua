@@ -46,10 +46,23 @@ Open a source device to read packets from.
 
 
 
+-- pcap.DLT = { EN10MB=DLT_EN10MB, [DLT_EN10MB] = "EN10MB", ... }
+
+DLT is a table of common DLT types. The DLT number and name are mapped to each other.
+
+DLT.EN10MB is Ethernet (of all speeds, the name is historical).
+DLT.LINUX_SLL can occur when capturing on Linux with a device of "any".
+
+See <http://www.tcpdump.org/linktypes.html> for more information.
+
+The numeric values are returned by cap:datalink() and accepted as linktype values
+in pcap.open_dead().
+
+
 -- cap = pcap.open_dead([linktype, [caplen]])
 
-linktype is one of the DLT_ numbers, and defaults to 1 ("DLT_EN10MB")
-caplen is the maximum size of packet, and defaults to ...
+- linktype is one of the DLT numbers, and defaults to pcap.DLT.EN10MB.
+- caplen is the maximum size of packet, and defaults to ...
 
 caplen defaults to 0, meaning "no limit" (actually, its changed into
 65535 internally, which is what tcpdump does)
@@ -61,7 +74,7 @@ BPF program.
 
 -- cap = pcap.open_offline([fname])
 
-fname defaults to "-", stdin.
+- fname defaults to "-", stdin.
 
 Open a savefile to read packets from.
 
@@ -82,6 +95,14 @@ it's created.
 - filter is the filter string, see tcpdump or pcap-filter man page.
 - nooptimize can be true if you don't want the filter optimized during compile
   (the default is to optimize).
+
+
+-- num = cap:datalink()
+
+Interpretation of the packet data requires knowing it's datalink type. This
+function returns that as a number.
+
+See pcap.DLT for more information.
 
 
 -- capdata, timestamp, wirelen = cap:next()

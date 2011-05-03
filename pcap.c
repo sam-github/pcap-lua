@@ -173,10 +173,38 @@ static int lpcap_open_live(lua_State *L)
 
 
 /*-
+-- pcap.DLT = { EN10MB=DLT_EN10MB, [DLT_EN10MB] = "EN10MB", ... }
+
+DLT is a table of common DLT types. The DLT number and name are mapped to each other.
+
+DLT.EN10MB is Ethernet (of all speeds, the name is historical).
+DLT.LINUX_SLL can occur when capturing on Linux with a device of "any".
+
+See <http://www.tcpdump.org/linktypes.html> for more information.
+
+The numeric values are returned by cap:datalink() and accepted as linktype values
+in pcap.open_dead().
+*/
+/* In the table at the top of the stack, dlt, do:
+ *    dlt[name] = number
+ *    dlt[number] = name
+ */
+static void pcap_dlt_set(lua_State* L, const char* name, int number)
+{
+    lua_pushstring(L, name);
+    lua_pushinteger(L, number);
+    lua_settable(L, -3);
+
+    lua_pushinteger(L, number);
+    lua_pushstring(L, name);
+    lua_settable(L, -3);
+}
+
+/*-
 -- cap = pcap.open_dead([linktype, [caplen]])
 
-linktype is one of the DLT_ numbers, and defaults to 1 ("DLT_EN10MB")
-caplen is the maximum size of packet, and defaults to ...
+- linktype is one of the DLT numbers, and defaults to pcap.DLT.EN10MB.
+- caplen is the maximum size of packet, and defaults to ...
 
 caplen defaults to 0, meaning "no limit" (actually, its changed into
 65535 internally, which is what tcpdump does)
@@ -184,11 +212,6 @@ caplen defaults to 0, meaning "no limit" (actually, its changed into
 Open a pcap that doesn't read from either a live interface, or an offline pcap
 file. It can be used with cap:dump_open() to write a pcap file, or to compile a
 BPF program.
-*/
-/*
-TODO should accept strings as the link type, or have a table of the link
-types:
-    pcap.DLT = { NULL = 0, EN10MB = 1, ... }
 */
 static int lpcap_open_dead(lua_State *L)
 {
@@ -209,7 +232,7 @@ static int lpcap_open_dead(lua_State *L)
 /*-
 -- cap = pcap.open_offline([fname])
 
-fname defaults to "-", stdin.
+- fname defaults to "-", stdin.
 
 Open a savefile to read packets from.
 
@@ -286,6 +309,22 @@ static int lpcap_set_filter(lua_State* L)
     }
 
     lua_settop(L, 1);
+
+    return 1;
+}
+
+/*-
+-- num = cap:datalink()
+
+Interpretation of the packet data requires knowing it's datalink type. This
+function returns that as a number.
+
+See pcap.DLT for more information.
+*/
+static int lpcap_datalink(lua_State* L)
+{
+    pcap_t* cap = checkpcap(L);
+    lua_pushnumber(L, pcap_datalink(cap));
 
     return 1;
 }
@@ -515,6 +554,7 @@ static const luaL_reg pcap_methods[] =
 {
     {"dump_open", lpcap_dump_open},
     {"set_filter", lpcap_set_filter},
+    {"datalink", lpcap_datalink},
     {"next", lpcap_next},
     {"__gc", lpcap_destroy},
     {"close", lpcap_destroy},
@@ -538,6 +578,22 @@ LUALIB_API int luaopen_pcap (lua_State *L)
     luaL_register(L, "pcap", pcap_module);
     lua_pushstring(L, pcap_lib_version());
     lua_setfield(L, -2, "_LIB_VERSION");
+
+    /* Create DLT table */
+    /* TODO - add all the DLT values... */
+    lua_newtable(L);
+#ifdef DLT_EN10MB
+    pcap_dlt_set(L, "EN10MB", DLT_EN10MB);
+#endif
+#ifdef DLT_RAW
+    pcap_dlt_set(L, "RAW", DLT_RAW);
+#endif
+#ifdef DLT_LINUX_SLL
+    pcap_dlt_set(L, "LINUX_SLL", DLT_LINUX_SLL);
+#endif
+
+    lua_setfield(L, -2, "DLT");
+
     return 1;
 }
 
