@@ -251,12 +251,12 @@ static int lpcap_open_dead(lua_State *L)
 /*-
 -- cap = pcap.open_offline([fname])
 
-- fname defaults to "-", stdin.
+fname defaults to "-", stdin.
 
 Open a savefile to read packets from.
 
-FIXME - in retrospect, fname defaulting to stdin causes unsuspecting users to
-think this API is hanging, when they don't actually have a pcap on stdin...
+Warning, fname defaulting to stdin causes unsuspecting users to
+think this API is hanging, when they don't actually have a pcap on stdin.
 */
 static int lpcap_open_offline(lua_State *L)
 {
@@ -265,6 +265,25 @@ static int lpcap_open_offline(lua_State *L)
     char errbuf[PCAP_ERRBUF_SIZE];
     *cap = pcap_open_offline(fname, errbuf);
     return checkpcapopen(L, cap, errbuf);
+}
+
+
+/*-
+-- cap:close()
+
+Manually close a cap object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
+*/
+static int lpcap_close (lua_State *L)
+{
+    pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
+
+    if(*cap)
+        pcap_close(*cap);
+
+    *cap = NULL;
+
+    return 0;
 }
 
 
@@ -344,10 +363,29 @@ static int lpcap_datalink(lua_State* L)
 {
     pcap_t* cap = checkpcap(L);
     lua_pushnumber(L, pcap_datalink(cap));
-
     return 1;
 }
 
+/*-
+-- fd = cap:getfd()
+
+Get a selectable file descriptor number which can be used to wait for packets.
+
+Returns the descriptor number on success, or nil if no such descriptor is
+available (see pcap_get_selectable_fd).
+*/
+static int lpcap_getfd(lua_State* L)
+{
+    pcap_t* cap = checkpcap(L);
+    int fd = pcap_get_selectable_fd(cap);
+    if(fd < 0) {
+        lua_pushnil(L);
+        lua_pushstring(L, "not selectable");
+        return 2;
+    }
+    lua_pushnumber(L, fd);
+    return 1;
+}
 
 /*-
 -- capdata, timestamp, wirelen = cap:next()
@@ -364,7 +402,7 @@ Returns capdata, timestamp, wirelen on sucess:
 - timestamp is in seconds, theoretically to microsecond accuracy
 - wirelen is the packets original length, the capdata may be shorter
 
-Returns nil,emsg on falure, where emsg is:
+Returns nil,emsg on failure, where emsg is:
 
 - "timeout", timeout on a live capture
 - "closed", no more packets to be read from a file
@@ -406,23 +444,31 @@ static int lpcap_next(lua_State* L)
     return luaL_error(L, "unreachable");
 }
 
+
 /*-
--- cap:close()
+-- sent = cap:inject(packet)
 
-Manually close a cap object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
+Injects packet.
+
+Return is bytes sent on success, or nil,emsg on failure.
 */
-static int lpcap_close (lua_State *L)
+static int lpcap_inject(lua_State* L)
 {
-    pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
+    pcap_t* cap = checkpcap(L);
+    size_t datasz = 0;
+    const char* data = luaL_checklstring(L, 2, &datasz);
 
-    if(*cap)
-        pcap_close(*cap);
+    int sent = pcap_inject(cap, data, datasz);
 
-    *cap = NULL;
+    if (sent < 0) {
+        return pusherr(L, cap);
+    }
 
-    return 0;
+    lua_pushinteger(L, sent);
+
+    return 1;
 }
+
 
 /* Wrap pcap_dumper_t */
 
@@ -557,7 +603,14 @@ static const luaL_reg pcap_methods[] =
     {"dump_open", lpcap_dump_open},
     {"set_filter", lpcap_set_filter},
     {"datalink", lpcap_datalink},
+    {"getfd", lpcap_getfd},
     {"next", lpcap_next},
+    /* TODO - wt_pcap.c also had a next_nonblocking(), I'm not sure why a setnonblocking() wasn't sufficient */
+    {"inject", lpcap_inject},
+
+    /* FIXME remove these once we don't need backwards compatibility */
+    {"destroy", lpcap_close},
+    {"get_selectable_fd", lpcap_getfd},
     {NULL, NULL}
 };
 
