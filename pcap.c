@@ -118,7 +118,7 @@ static pcap_t* checkpcap(lua_State* L)
 {
     pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
 
-    luaL_argcheck(L, *cap, 1, "pcap has been destroyed");
+    luaL_argcheck(L, *cap, 1, "pcap has been closed");
 
     return *cap;
 }
@@ -169,6 +169,25 @@ static int lpcap_open_live(lua_State *L)
         snaplen = 0xffff;
     *cap = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
     return checkpcapopen(L, cap, errbuf);
+}
+
+
+/*-
+-- dumper:close()
+
+Manually close a dumper object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
+*/
+static int lpcap_dump_close (lua_State *L)
+{
+    pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
+
+    if(*dumper)
+        pcap_dump_close(*dumper);
+
+    *dumper = NULL;
+
+    return 0;
 }
 
 
@@ -388,12 +407,12 @@ static int lpcap_next(lua_State* L)
 }
 
 /*-
--- cap:destroy()
+-- cap:close()
 
-Manually destroy a cap object, freeing it's resources (this will happen on
+Manually close a cap object, freeing it's resources (this will happen on
 garbage collection if not done explicitly).
 */
-static int lpcap_destroy (lua_State *L)
+static int lpcap_close (lua_State *L)
 {
     pcap_t** cap = luaL_checkudata(L, 1, L_PCAP_REGID);
 
@@ -411,7 +430,7 @@ static pcap_dumper_t* checkdumper(lua_State* L)
 {
     pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
 
-    luaL_argcheck(L, *dumper, 1, "pcap dumper has been destroyed");
+    luaL_argcheck(L, *dumper, 1, "pcap dumper has been closed");
 
     return *dumper;
 }
@@ -488,25 +507,6 @@ static int lpcap_flush(lua_State* L)
     return 2;
 }
 
-/*-
--- dumper:destroy()
-
-Manually destroy a dumper object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
-*/
-static int lpcap_dump_destroy (lua_State *L)
-{
-    pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
-
-    if(*dumper)
-        pcap_dump_close(*dumper);
-
-    *dumper = NULL;
-
-    return 0;
-}
-
-
 /* timeval to second conversions */
 /* These don't need to be external, but are useful to test timeval conversion from lua. */
 /*-
@@ -552,19 +552,19 @@ static const luaL_reg pcap_module[] =
 
 static const luaL_reg pcap_methods[] =
 {
+    {"__gc", lpcap_close},
+    {"close", lpcap_close},
     {"dump_open", lpcap_dump_open},
     {"set_filter", lpcap_set_filter},
     {"datalink", lpcap_datalink},
     {"next", lpcap_next},
-    {"__gc", lpcap_destroy},
-    {"close", lpcap_destroy},
     {NULL, NULL}
 };
 
 static const luaL_reg dumper_methods[] =
 {
-    {"__gc", lpcap_dump_destroy},
-    {"close", lpcap_dump_destroy},
+    {"__gc", lpcap_dump_close},
+    {"close", lpcap_dump_close},
     {"dump", lpcap_dump},
     {"flush", lpcap_flush},
     {NULL, NULL}
