@@ -315,7 +315,13 @@ static int lpcap_dump_open(lua_State *L)
     return 1;
 }
 
-
+/* Current libpcap says to use PCAP_NETMASK_UNKNOWN if you don't know the
+   netmask, older libpcaps says to use 0, so we do one or the other
+   depending on whether the macro exists.
+   */
+#ifndef PCAP_NETMASK_UNKNOWN
+# define PCAP_NETMASK_UNKNOWN 0
+#endif
 /*-
 -- cap = cap:set_filter(filter, nooptimize)
 
