@@ -39,11 +39,21 @@ pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_versi
 
 Open a source device to read packets from.
 
+
 - device is the physical device (defaults to "any")
+
 - snaplen is the size to capture, where 0 means max possible (defaults to 0)
+
 - promisc is whether to set the device into promiscuous mode (default is false)
+
 - timeout is the timeout for reads in seconds (default is 0, return if no packets available)
 
+
+
+-- dumper:close()
+
+Manually close a dumper object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
 
 
 -- pcap.DLT = { EN10MB=DLT_EN10MB, [DLT_EN10MB] = "EN10MB", ... }
@@ -61,7 +71,9 @@ in pcap.open_dead().
 
 -- cap = pcap.open_dead([linktype, [caplen]])
 
+
 - linktype is one of the DLT numbers, and defaults to pcap.DLT.EN10MB.
+
 - caplen is the maximum size of packet, and defaults to ...
 
 caplen defaults to 0, meaning "no limit" (actually, its changed into
@@ -74,12 +86,18 @@ BPF program.
 
 -- cap = pcap.open_offline([fname])
 
-- fname defaults to "-", stdin.
+fname defaults to "-", stdin.
 
 Open a savefile to read packets from.
 
-FIXME - in retrospect, fname defaulting to stdin causes unsuspecting users to
-think this API is hanging, when they don't actually have a pcap on stdin...
+Warning, fname defaulting to stdin causes unsuspecting users to
+think this API is hanging, when they don't actually have a pcap on stdin.
+
+
+-- cap:close()
+
+Manually close a cap object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
 
 
 -- dumper = cap:dump_open([fname])
@@ -92,7 +110,9 @@ it's created.
 
 -- cap = cap:set_filter(filter, nooptimize)
 
+
 - filter is the filter string, see tcpdump or pcap-filter man page.
+
 - nooptimize can be true if you don't want the filter optimized during compile
   (the default is to optimize).
 
@@ -105,6 +125,14 @@ function returns that as a number.
 See pcap.DLT for more information.
 
 
+-- fd = cap:getfd()
+
+Get a selectable file descriptor number which can be used to wait for packets.
+
+Returns the descriptor number on success, or nil if no such descriptor is
+available (see pcap_get_selectable_fd).
+
+
 -- capdata, timestamp, wirelen = cap:next()
 
 Example:
@@ -115,21 +143,28 @@ Example:
 
 Returns capdata, timestamp, wirelen on sucess:
 
+
 - capdata is the captured data
+
 - timestamp is in seconds, theoretically to microsecond accuracy
+
 - wirelen is the packets original length, the capdata may be shorter
 
-Returns nil,emsg on falure, where emsg is:
+Returns nil,emsg on failure, where emsg is:
+
 
 - "timeout", timeout on a live capture
+
 - "closed", no more packets to be read from a file
+
 - ... some other string returned from pcap_geterr() describing the error
 
 
--- cap:destroy()
+-- sent = cap:inject(packet)
 
-Manually destroy a cap object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
+Injects packet.
+
+Return is bytes sent on success, or nil,emsg on failure.
 
 
 -- dumper = dumper:dump(pkt, [timestamp, [wirelen]])
@@ -153,12 +188,6 @@ Flush all dumped packets to disk.
 
 Returns self on sucess.
 Returns nil and an error msg on failure.
-
-
--- dumper:destroy()
-
-Manually destroy a dumper object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
 
 
 -- secs = pcap.tv2secs(seci, useci)
