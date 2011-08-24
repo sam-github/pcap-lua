@@ -613,10 +613,6 @@ static const luaL_reg pcap_methods[] =
     {"next", lpcap_next},
     /* TODO - wt_pcap.c also had a next_nonblocking(), I'm not sure why a setnonblocking() wasn't sufficient */
     {"inject", lpcap_inject},
-
-    /* FIXME remove these once we don't need backwards compatibility */
-    {"destroy", lpcap_close},
-    {"get_selectable_fd", lpcap_getfd},
     {NULL, NULL}
 };
 
