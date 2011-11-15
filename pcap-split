@@ -1,0 +1,15 @@
+#!/usr/bin/env lua5.1
+
+require"pcap"
+
+file = assert(arg[1])
+cap = assert(pcap.open_offline(file))
+
+for pkt, time, len in cap.next, cap do
+    i = (i or 0) + 1
+    print("packet", i, "wirelen", len, "timestamp", time, os.date("!%c", time))
+    dumper = assert(cap:dump_open(i..".pcap"))
+    assert(dumper:dump(pkt, time, len))
+    dumper:close()
+end
+
