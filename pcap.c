@@ -220,13 +220,11 @@ static void pcap_dlt_set(lua_State* L, const char* name, int number)
 }
 
 /*-
--- cap = pcap.open_dead([linktype, [caplen]])
+-- cap = pcap.open_dead([linktype, [snaplen]])
 
 - linktype is one of the DLT numbers, and defaults to pcap.DLT.EN10MB.
-- caplen is the maximum size of packet, and defaults to ...
-
-caplen defaults to 0, meaning "no limit" (actually, its changed into
-65535 internally, which is what tcpdump does)
+- snaplen is the maximum size of packet, and defaults to 65535 (also,
+  a value of 0 is changed into 65535 internally, as tcpdump does).
 
 Open a pcap that doesn't read from either a live interface, or an offline pcap
 file. It can be used with cap:dump_open() to write a pcap file, or to compile a
@@ -293,7 +291,7 @@ static int lpcap_close (lua_State *L)
 fname defaults to "-", stdout.
 
 Note that the dumper object is independent of the cap object, once
-it's created.
+it's created (the cap object can be closed).
 */
 static int lpcap_dump_open(lua_State *L)
 {
@@ -369,6 +367,22 @@ static int lpcap_datalink(lua_State* L)
 {
     pcap_t* cap = checkpcap(L);
     lua_pushnumber(L, pcap_datalink(cap));
+    return 1;
+}
+
+/*-
+-- snaplen = cap:snapshot()
+
+The snapshot length.
+
+For a live capture, snapshot is the maximum amount of the packet that will be
+captured, for writing of captures, it is the maximum size of a packet that can
+be written.
+*/
+static int lpcap_snapshot(lua_State* L)
+{
+    pcap_t* cap = checkpcap(L);
+    lua_pushnumber(L, pcap_snapshot(cap));
     return 1;
 }
 
@@ -490,10 +504,18 @@ static pcap_dumper_t* checkdumper(lua_State* L)
 /*-
 -- dumper = dumper:dump(pkt, [timestamp, [wirelen]])
 
-pkt to dump
+pkt is the packet to write to the dumpfile.
 
-timestamp of packet, defaults to 0, meaning the current time
-wire length of packet, defaults to pkt's length
+timestamp of packet, defaults to 0, meaning the current time.
+
+wirelen was the original length of the packet before being truncated to header
+(defaults to length of header, the correct value if it was not truncated).
+
+If only the header of the packet is available, wirelen should be set to the
+original packet length before it was truncated. Also, be very careful to not
+write a header that is longer than the caplen (which will 65535 unless a
+different value was specified in open_live or open_dead), the pcap file
+will not be valid.
 
 Returns self on sucess.
 Returns nil and an error msg on failure.
@@ -502,6 +524,7 @@ Note that arguments are compatible with cap:next(), and that since
 pcap_dump() doesn't return error indicators only the failure
 values from cap:next() will ever be returned.
 */
+/* TODO store the snaplen in dumper's environment, so we can check it here */
 static int lpcap_dump(lua_State* L)
 {
     pcap_dumper_t* dumper = checkdumper(L);
@@ -520,6 +543,8 @@ static int lpcap_dump(lua_State* L)
     pkt = luaL_checklstring(L, 2, &caplen);
     opttimeval(L, 3, &hdr.ts);
     wirelen = luaL_optint(L, 4, caplen);
+
+    luaL_argcheck(L, wirelen >= caplen, 4, "original wirelen cannot be less than current pkt length");
 
     hdr.caplen = caplen;
     hdr.len = wirelen;
@@ -609,6 +634,7 @@ static const luaL_reg pcap_methods[] =
     {"dump_open", lpcap_dump_open},
     {"set_filter", lpcap_set_filter},
     {"datalink", lpcap_datalink},
+    {"snapshot", lpcap_snapshot},
     {"getfd", lpcap_getfd},
     {"next", lpcap_next},
     /* TODO - wt_pcap.c also had a next_nonblocking(), I'm not sure why a setnonblocking() wasn't sufficient */
