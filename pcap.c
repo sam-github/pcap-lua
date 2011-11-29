@@ -219,6 +219,34 @@ static void pcap_dlt_set(lua_State* L, const char* name, int number)
     lua_settable(L, -3);
 }
 
+/* TODO - add all the DLT values... */
+static void pcap_make_dlt(lua_State* L)
+{
+    lua_newtable(L);
+#ifdef DLT_EN10MB
+    pcap_dlt_set(L, "EN10MB", DLT_EN10MB);
+#endif
+#ifdef DLT_RAW
+    pcap_dlt_set(L, "RAW", DLT_RAW);
+#endif
+#ifdef DLT_LINUX_SLL
+    pcap_dlt_set(L, "LINUX_SLL", DLT_LINUX_SLL);
+#endif
+#ifdef DLT_USER0
+    pcap_dlt_set(L, "USER0", DLT_USER0);
+#endif
+#ifdef DLT_USER1
+    pcap_dlt_set(L, "USER1", DLT_USER1);
+#endif
+#ifdef DLT_USER2
+    pcap_dlt_set(L, "USER2", DLT_USER2);
+#endif
+#ifdef DLT_USER3
+    pcap_dlt_set(L, "USER3", DLT_USER3);
+#endif
+}
+
+
 /*-
 -- cap = pcap.open_dead([linktype, [snaplen]])
 
@@ -660,19 +688,7 @@ LUALIB_API int luaopen_pcap (lua_State *L)
     lua_pushstring(L, pcap_lib_version());
     lua_setfield(L, -2, "_LIB_VERSION");
 
-    /* Create DLT table */
-    /* TODO - add all the DLT values... */
-    lua_newtable(L);
-#ifdef DLT_EN10MB
-    pcap_dlt_set(L, "EN10MB", DLT_EN10MB);
-#endif
-#ifdef DLT_RAW
-    pcap_dlt_set(L, "RAW", DLT_RAW);
-#endif
-#ifdef DLT_LINUX_SLL
-    pcap_dlt_set(L, "LINUX_SLL", DLT_LINUX_SLL);
-#endif
-
+    pcap_make_dlt(L);
     lua_setfield(L, -2, "DLT");
 
     return 1;
