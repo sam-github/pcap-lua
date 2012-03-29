@@ -31,8 +31,18 @@ See below, extracted from in-source comments.
 
 ** pcap - a binding to libpcap
 
-pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_version().
 
+-- pcap.DLT = { EN10MB=DLT_EN10MB, [DLT_EN10MB] = "EN10MB", ... }
+
+DLT is a table of common DLT types. The DLT number and name are mapped to each other.
+
+DLT.EN10MB is Ethernet (of all speeds, the name is historical).
+DLT.LINUX_SLL can occur when capturing on Linux with a device of "any".
+
+See <http://www.tcpdump.org/linktypes.html> for more information.
+
+The numeric values are returned by cap:datalink() and accepted as linktype values
+in pcap.open_dead().
 
 
 -- cap = pcap.open_live(device, snaplen, promisc, timeout)
@@ -50,62 +60,30 @@ Open a source device to read packets from.
 
 
 
--- dumper:close()
-
-Manually close a dumper object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
-
-
--- pcap.DLT = { EN10MB=DLT_EN10MB, [DLT_EN10MB] = "EN10MB", ... }
-
-DLT is a table of common DLT types. The DLT number and name are mapped to each other.
-
-DLT.EN10MB is Ethernet (of all speeds, the name is historical).
-DLT.LINUX_SLL can occur when capturing on Linux with a device of "any".
-
-See <http://www.tcpdump.org/linktypes.html> for more information.
-
-The numeric values are returned by cap:datalink() and accepted as linktype values
-in pcap.open_dead().
-
-
--- cap = pcap.open_dead([linktype, [caplen]])
+-- cap = pcap.open_dead([linktype, [snaplen]])
 
 
 - linktype is one of the DLT numbers, and defaults to pcap.DLT.EN10MB.
 
-- caplen is the maximum size of packet, and defaults to ...
-
-caplen defaults to 0, meaning "no limit" (actually, its changed into
-65535 internally, which is what tcpdump does)
+- snaplen is the maximum size of packet, and defaults to 65535 (also,
+  a value of 0 is changed into 65535 internally, as tcpdump does).
 
 Open a pcap that doesn't read from either a live interface, or an offline pcap
 file. It can be used with cap:dump_open() to write a pcap file, or to compile a
 BPF program.
 
 
--- cap = pcap.open_offline([fname])
-
-fname defaults to "-", stdin.
+-- cap = pcap.open_offline(fname)
 
 Open a savefile to read packets from.
 
-Warning, fname defaulting to stdin causes unsuspecting users to
-think this API is hanging, when they don't actually have a pcap on stdin.
+An fname of "-" is a synonym for stdin.
 
 
 -- cap:close()
 
 Manually close a cap object, freeing it's resources (this will happen on
 garbage collection if not done explicitly).
-
-
--- dumper = cap:dump_open([fname])
-
-fname defaults to "-", stdout.
-
-Note that the dumper object is independent of the cap object, once
-it's created.
 
 
 -- cap = cap:set_filter(filter, nooptimize)
@@ -123,6 +101,15 @@ Interpretation of the packet data requires knowing it's datalink type. This
 function returns that as a number.
 
 See pcap.DLT for more information.
+
+
+-- snaplen = cap:snapshot()
+
+The snapshot length.
+
+For a live capture, snapshot is the maximum amount of the packet that will be
+captured, for writing of captures, it is the maximum size of a packet that can
+be written.
 
 
 -- fd = cap:getfd()
@@ -167,12 +154,37 @@ Injects packet.
 Return is bytes sent on success, or nil,emsg on failure.
 
 
+-- dumper = cap:dump_open(fname)
+
+Open a dump file to write packets to.
+
+An fname of "-" is a synonym for stdout.
+
+Note that the dumper object is independent of the cap object, once
+it's created (so the cap object can be closed if its not going to
+be used).
+
+
+-- dumper:close()
+
+Manually close a dumper object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
+
+
 -- dumper = dumper:dump(pkt, [timestamp, [wirelen]])
 
-pkt to dump
+pkt is the packet to write to the dumpfile.
 
-timestamp of packet, defaults to 0, meaning the current time
-wire length of packet, defaults to pkt's length
+timestamp of packet, defaults to 0, meaning the current time.
+
+wirelen was the original length of the packet before being truncated to header
+(defaults to length of header, the correct value if it was not truncated).
+
+If only the header of the packet is available, wirelen should be set to the
+original packet length before it was truncated. Also, be very careful to not
+write a header that is longer than the caplen (which will 65535 unless a
+different value was specified in open_live or open_dead), the pcap file
+will not be valid.
 
 Returns self on sucess.
 Returns nil and an error msg on failure.
@@ -198,3 +210,8 @@ Combine seperate seconds and microseconds into one numeric seconds.
 -- seci, useci = pcap.secs2tv(secs)
 
 Split one numeric seconds into seperate seconds and microseconds.
+
+
+-- pcap._LIB_VERSION = ...
+
+The libpcap version string, as returned from pcap_lib_version().

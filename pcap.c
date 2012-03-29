@@ -28,9 +28,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 /*-
 ** pcap - a binding to libpcap
-
-pcap._LIB_VERSION is the libpcap version string, as returned from pcap_lib_version().
-
 */
 
 #include <assert.h>
@@ -147,51 +144,6 @@ static int checkpcapopen(lua_State* L, pcap_t** cap, const char* errbuf)
 /* Wrap pcap_t */
 
 /*-
--- cap = pcap.open_live(device, snaplen, promisc, timeout)
-
-Open a source device to read packets from.
-
-- device is the physical device (defaults to "any")
-- snaplen is the size to capture, where 0 means max possible (defaults to 0)
-- promisc is whether to set the device into promiscuous mode (default is false)
-- timeout is the timeout for reads in seconds (default is 0, return if no packets available)
-
-*/
-static int lpcap_open_live(lua_State *L)
-{
-    const char *device = luaL_optstring(L, 1, "any");
-    int snaplen = luaL_optint(L, 2, 0);
-    int promisc = lua_toboolean(L, 3);
-    int to_ms = 1000 * luaL_optint(L, 4, 0); /* convert to milliseconds */
-    pcap_t** cap = pushpcapopen(L);
-    char errbuf[PCAP_ERRBUF_SIZE];
-    if(snaplen == 0)
-        snaplen = 0xffff;
-    *cap = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
-    return checkpcapopen(L, cap, errbuf);
-}
-
-
-/*-
--- dumper:close()
-
-Manually close a dumper object, freeing it's resources (this will happen on
-garbage collection if not done explicitly).
-*/
-static int lpcap_dump_close (lua_State *L)
-{
-    pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
-
-    if(*dumper)
-        pcap_dump_close(*dumper);
-
-    *dumper = NULL;
-
-    return 0;
-}
-
-
-/*-
 -- pcap.DLT = { EN10MB=DLT_EN10MB, [DLT_EN10MB] = "EN10MB", ... }
 
 DLT is a table of common DLT types. The DLT number and name are mapped to each other.
@@ -244,6 +196,32 @@ static void pcap_make_dlt(lua_State* L)
 #ifdef DLT_USER3
     pcap_dlt_set(L, "USER3", DLT_USER3);
 #endif
+}
+
+
+/*-
+-- cap = pcap.open_live(device, snaplen, promisc, timeout)
+
+Open a source device to read packets from.
+
+- device is the physical device (defaults to "any")
+- snaplen is the size to capture, where 0 means max possible (defaults to 0)
+- promisc is whether to set the device into promiscuous mode (default is false)
+- timeout is the timeout for reads in seconds (default is 0, return if no packets available)
+
+*/
+static int lpcap_open_live(lua_State *L)
+{
+    const char *device = luaL_optstring(L, 1, "any");
+    int snaplen = luaL_optint(L, 2, 0);
+    int promisc = lua_toboolean(L, 3);
+    int to_ms = 1000 * luaL_optint(L, 4, 0); /* convert to milliseconds */
+    pcap_t** cap = pushpcapopen(L);
+    char errbuf[PCAP_ERRBUF_SIZE];
+    if(snaplen == 0)
+        snaplen = 0xffff;
+    *cap = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
+    return checkpcapopen(L, cap, errbuf);
 }
 
 
@@ -309,37 +287,6 @@ static int lpcap_close (lua_State *L)
     return 0;
 }
 
-
-/*-
--- dumper = cap:dump_open(fname)
-
-Open a dump file to write packets to.
-
-An fname of "-" is a synonym for stdout.
-
-Note that the dumper object is independent of the cap object, once
-it's created (so the cap object can be closed if its not going to
-be used).
-*/
-static int lpcap_dump_open(lua_State *L)
-{
-    pcap_t* cap = checkpcap(L);
-    const char* fname = luaL_checkstring(L, 2);
-    pcap_dumper_t** dumper = lua_newuserdata(L, sizeof(*dumper));
-
-    *dumper = NULL;
-
-    luaL_getmetatable(L, L_PCAP_DUMPER_REGID);
-    lua_setmetatable(L, -2);
-
-    *dumper = pcap_dump_open(cap, fname);
-
-    if (!*dumper) {
-        return pusherr(L, cap);
-    }
-
-    return 1;
-}
 
 /* Current libpcap says to use PCAP_NETMASK_UNKNOWN if you don't know the
    netmask, older libpcaps says to use 0, so we do one or the other
@@ -530,6 +477,57 @@ static pcap_dumper_t* checkdumper(lua_State* L)
 }
 
 /*-
+-- dumper = cap:dump_open(fname)
+
+Open a dump file to write packets to.
+
+An fname of "-" is a synonym for stdout.
+
+Note that the dumper object is independent of the cap object, once
+it's created (so the cap object can be closed if its not going to
+be used).
+*/
+static int lpcap_dump_open(lua_State *L)
+{
+    pcap_t* cap = checkpcap(L);
+    const char* fname = luaL_checkstring(L, 2);
+    pcap_dumper_t** dumper = lua_newuserdata(L, sizeof(*dumper));
+
+    *dumper = NULL;
+
+    luaL_getmetatable(L, L_PCAP_DUMPER_REGID);
+    lua_setmetatable(L, -2);
+
+    *dumper = pcap_dump_open(cap, fname);
+
+    if (!*dumper) {
+        return pusherr(L, cap);
+    }
+
+    return 1;
+}
+
+
+/*-
+-- dumper:close()
+
+Manually close a dumper object, freeing it's resources (this will happen on
+garbage collection if not done explicitly).
+*/
+static int lpcap_dump_close (lua_State *L)
+{
+    pcap_dumper_t** dumper = luaL_checkudata(L, 1, L_PCAP_DUMPER_REGID);
+
+    if(*dumper)
+        pcap_dump_close(*dumper);
+
+    *dumper = NULL;
+
+    return 0;
+}
+
+
+/*-
 -- dumper = dumper:dump(pkt, [timestamp, [wirelen]])
 
 pkt is the packet to write to the dumpfile.
@@ -645,6 +643,11 @@ static int lpcap_secs2tv(lua_State* L)
     return 2;
 }
 
+/*-
+-- pcap._LIB_VERSION = ...
+
+The libpcap version string, as returned from pcap_lib_version().
+*/
 static const luaL_reg pcap_module[] =
 {
     {"open_live", lpcap_open_live},
