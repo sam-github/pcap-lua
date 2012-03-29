@@ -275,18 +275,15 @@ static int lpcap_open_dead(lua_State *L)
 
 
 /*-
--- cap = pcap.open_offline([fname])
-
-fname defaults to "-", stdin.
+-- cap = pcap.open_offline(fname)
 
 Open a savefile to read packets from.
 
-Warning, fname defaulting to stdin causes unsuspecting users to
-think this API is hanging, when they don't actually have a pcap on stdin.
+An fname of "-" is a synonym for stdin.
 */
 static int lpcap_open_offline(lua_State *L)
 {
-    const char *fname = luaL_optstring(L, 1, "-");
+    const char *fname = luaL_checkstring(L, 1);
     pcap_t** cap = pushpcapopen(L);
     char errbuf[PCAP_ERRBUF_SIZE];
     *cap = pcap_open_offline(fname, errbuf);
@@ -314,17 +311,20 @@ static int lpcap_close (lua_State *L)
 
 
 /*-
--- dumper = cap:dump_open([fname])
+-- dumper = cap:dump_open(fname)
 
-fname defaults to "-", stdout.
+Open a dump file to write packets to.
+
+An fname of "-" is a synonym for stdout.
 
 Note that the dumper object is independent of the cap object, once
-it's created (the cap object can be closed).
+it's created (so the cap object can be closed if its not going to
+be used).
 */
 static int lpcap_dump_open(lua_State *L)
 {
     pcap_t* cap = checkpcap(L);
-    const char* fname = luaL_optstring(L, 2, "-");
+    const char* fname = luaL_checkstring(L, 2);
     pcap_dumper_t** dumper = lua_newuserdata(L, sizeof(*dumper));
 
     *dumper = NULL;
