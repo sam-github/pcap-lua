@@ -72,30 +72,6 @@ function assertmostlyeql(threshold, s0, s1)
   assert(diff <= threshold, diff.." is less than threshold "..threshold)
 end
 
-function pcaprecode(incap, outcap)
-    if not outcap then
-        outcap = "recoded-"..incap
-    end
-    os.remove(outcap)
-
-    local cap = assert(pcap.open_offline(incap))
-    local dmp = assert(cap:dump_open(outcap))
-    local n = assert(net.init())
-    local i = 0
-    for pkt, time, len in cap.next, cap do
-        i = i + 1
-        print("packet", i, "wirelen", len, "timestamp", time, os.date("!%c", time))
-        assert(n:clear())
-        assert(n:decode_eth(pkt))
-        assert(dmp:dump(n:block(), time, len))
-        --print(n:dump())
-    end
-    dmp:close()
-    cap:close()
-    n:destroy()
-    return outcap
-end
-
 function assertpcapsimilar(threshold, file0, file1)
     local n0 = assert(net.init())
     local n1 = assert(net.init())

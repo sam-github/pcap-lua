@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-require"netutil"
+require"pcapx"
 
-pcaprecode(arg[1], arg[2])
+pcap.recode(arg[1], arg[2])
 

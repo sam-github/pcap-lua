@@ -16,10 +16,20 @@ prefix=/usr/local
 
 SODIR = $(DESTDIR)/$(prefix)/lib/lua/5.1/
 
+LIBDIR = $(DESTDIR)/$(prefix)/share/lua/5.1/
+BINDIR = $(DESTDIR)/$(prefix)/bin/
+
 .PHONY: install
 install: $(BINDING)
 	mkdir -p $(SODIR)
 	install -t $(SODIR) $(BINDING)
+
+.PHONY: install-all
+install-all: install
+	mkdir -p $(LIBDIR)
+	mkdir -p $(BINDIR)
+	install -t $(LIBDIR) pcapx.lua
+	install -t $(BINDIR) pcap-recode pcap-dump pcap-split
 
 CWARNS = -Wall \
   -pedantic \
