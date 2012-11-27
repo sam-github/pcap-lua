@@ -35,7 +35,6 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/time.h>
 #include <time.h>
 #include <math.h>
 #include <pcap.h>
@@ -43,6 +42,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include "lua.h"
 #include "lauxlib.h"
 #include "lualib.h"
+
+#ifdef WIN32
+#include <wt-win-common.h>
+#endif
 
 static double tv2secs(struct timeval* tv)
 {
@@ -58,11 +61,11 @@ static struct timeval* secs2tv(double secs, struct timeval* tv)
 
     fpart = modf(secs, &ipart);
 
-    tv->tv_sec  = (time_t) ipart;
+    tv->tv_sec  = (long) ipart;
 
     fpart = modf(fpart * 1000000.0, &ipart);
 
-    tv->tv_usec = (suseconds_t) ipart;
+    tv->tv_usec = (long) ipart;
 
     if(fpart > 0.5)
         tv->tv_usec += 1;
@@ -369,6 +372,7 @@ Get a selectable file descriptor number which can be used to wait for packets.
 Returns the descriptor number on success, or nil if no such descriptor is
 available (see pcap_get_selectable_fd).
 */
+#ifndef WIN32
 static int lpcap_getfd(lua_State* L)
 {
     pcap_t* cap = checkpcap(L);
@@ -381,6 +385,7 @@ static int lpcap_getfd(lua_State* L)
     lua_pushnumber(L, fd);
     return 1;
 }
+#endif
 
 /*-
 -- capdata, timestamp, wirelen = cap:next()
@@ -447,6 +452,7 @@ Injects packet.
 
 Return is bytes sent on success, or nil,emsg on failure.
 */
+#ifndef WIN32
 static int lpcap_inject(lua_State* L)
 {
     pcap_t* cap = checkpcap(L);
@@ -464,6 +470,7 @@ static int lpcap_inject(lua_State* L)
     return 1;
 }
 
+#endif
 
 /* Wrap pcap_dumper_t */
 
@@ -620,8 +627,8 @@ Combine seperate seconds and microseconds into one numeric seconds.
 static int lpcap_tv2secs(lua_State* L)
 {
     struct timeval tv;
-    tv.tv_sec = luaL_checknumber(L, 1);
-    tv.tv_usec = luaL_checknumber(L, 2);
+    tv.tv_sec = (long)luaL_checknumber(L, 1);
+    tv.tv_usec = (long)luaL_checknumber(L, 2);
 
     lua_pushnumber(L, tv2secs(&tv));
     return 1;
@@ -666,10 +673,14 @@ static const luaL_reg pcap_methods[] =
     {"set_filter", lpcap_set_filter},
     {"datalink", lpcap_datalink},
     {"snapshot", lpcap_snapshot},
+#ifndef WIN32
     {"getfd", lpcap_getfd},
+#endif
     {"next", lpcap_next},
     /* TODO - wt_pcap.c also had a next_nonblocking(), I'm not sure why a setnonblocking() wasn't sufficient */
+#ifndef WIN32
     {"inject", lpcap_inject},
+#endif
     {NULL, NULL}
 };
 
@@ -683,7 +694,7 @@ static const luaL_reg dumper_methods[] =
 };
 
 
-LUALIB_API int luaopen_pcap (lua_State *L)
+int luaopen_pcap (lua_State *L)
 {
     v_obj_metatable(L, L_PCAP_DUMPER_REGID, dumper_methods);
     v_obj_metatable(L, L_PCAP_REGID, pcap_methods);
