@@ -3,3 +3,4 @@ cap*.pcap
 *.so
 *.test
 tstpcap-*
+debian
