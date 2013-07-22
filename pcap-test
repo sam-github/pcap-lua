@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.1
 
-require "pcap"
+local pcap = require "pcap"
 require "netutil"
 
 local function gc()

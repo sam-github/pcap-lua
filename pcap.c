@@ -47,6 +47,10 @@ THE POSSIBILITY OF SUCH DAMAGE.
 #include <wt-win-common.h>
 #endif
 
+#if LUA_VERSION_NUM > 501
+#define luaL_reg luaL_Reg
+#endif 
+
 static double tv2secs(struct timeval* tv)
 {
     double secs = tv->tv_sec;
@@ -94,7 +98,13 @@ static void v_obj_metatable(lua_State* L, const char* regid, const struct luaL_r
 {
     /* metatable = { ... methods ... } */
     luaL_newmetatable(L, regid);
+
+#if LUA_VERSION_NUM > 501
+    luaL_setfuncs(L, methods, 0);
+#else
     luaL_register(L, NULL, methods);
+#endif
+
     /* metatable["__index"] = metatable */
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
@@ -698,7 +708,14 @@ int luaopen_pcap (lua_State *L)
 {
     v_obj_metatable(L, L_PCAP_DUMPER_REGID, dumper_methods);
     v_obj_metatable(L, L_PCAP_REGID, pcap_methods);
+
+#if LUA_VERSION_NUM > 501
+    lua_newtable(L);
+    luaL_setfuncs (L,pcap_module,0); //leaving global namespace clean in 5.2
+#else
     luaL_register(L, "pcap", pcap_module);
+#endif
+
     lua_pushstring(L, pcap_lib_version());
     lua_setfield(L, -2, "_LIB_VERSION");
 
