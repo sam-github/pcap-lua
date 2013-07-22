@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-require"pcapx"
+local pcap = require"pcapx"
 
 pcap.recode(arg[1], arg[2])
 

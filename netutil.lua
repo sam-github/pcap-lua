@@ -1,4 +1,4 @@
-require"pcap"
+local pcap = require"pcap"
 require"net"
 require"tostring"
 

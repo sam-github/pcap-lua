@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.1
 
-require"pcap"
+local pcap = require"pcap"
 
 arg.device = "any"
 arg.snaplen = 0

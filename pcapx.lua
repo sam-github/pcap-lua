@@ -3,7 +3,7 @@ pcapx - extensions to pcap
 
 ]]
 
-require"pcap"
+local pcap = require"pcap" 
 require"net"
 
 local function NOP()
@@ -50,3 +50,4 @@ function pcap.recode(incap, outcap, progress, debug)
     return outcap
 end
 
+return pcap

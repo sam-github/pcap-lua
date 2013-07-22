@@ -1,6 +1,6 @@
 #!/usr/bin/env lua5.1
 
-require"pcap"
+local pcap = require"pcap"
 
 file = assert(arg[1])
 cap = assert(pcap.open_offline(file))
