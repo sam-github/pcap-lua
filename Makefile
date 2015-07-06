@@ -59,15 +59,15 @@ echo:
 test: pcap.test $(TOUT)
 
 %.test: %.lua net.so
-	lua $<
+	$(LUA) $<
 	touch $@
 
 %.test: %-test %.so
-	lua $<
+	$(LUA) $<
 	touch $@
 
 %.test: %-test net.so
-	lua $<
+	$(LUA) $<
 	touch $@
 
 doc: README.txt
