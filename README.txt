@@ -8,7 +8,7 @@ systems.
 The binding doesn't implement the full libpcap API, just what we've needed so
 far.
 
-To build, see Makefile, it supports Linux and OS X.
+To build, see Makefile, it supports FreeBSD, Linux and OS X.
 
 To decode the packets, you might want to use libnet's lua bindings, see the
 lua/ subdirectory of <https://github.com/sam-github/libnet>.
