@@ -229,11 +229,44 @@ static int lpcap_open_live(lua_State *L)
     int snaplen = luaL_optint(L, 2, 0);
     int promisc = lua_toboolean(L, 3);
     int to_ms = 1000 * luaL_optint(L, 4, 0); /* convert to milliseconds */
+    int monitor = lua_toboolean(L, 5);
     pcap_t** cap = pushpcapopen(L);
     char errbuf[PCAP_ERRBUF_SIZE];
     if(snaplen == 0)
         snaplen = 0xffff;
     *cap = pcap_open_live(device, snaplen, promisc, to_ms, errbuf);
+    pcap_set_rfmon(*cap, monitor);
+    return checkpcapopen(L, cap, errbuf);
+}
+
+/*-
+-- cap = pcap.open_monitor(device, snaplen, timeout)
+
+Open a 802.11 source device to read packets in monitor mode.
+
+- device is the physical device (defaults to "any")
+- snaplen is the size to capture, where 0 means max possible (defaults to 0)
+- timeout is the timeout for reads in seconds (default is 0, return if no packets available)
+
+*/
+static int lpcap_open_monitor(lua_State *L)
+{
+    const char *device = luaL_optstring(L, 1, "any");
+    int snaplen = luaL_optint(L, 2, 0);
+    int to_ms = 1000 * luaL_optint(L, 3, 0); /* convert to milliseconds */
+
+    char errbuf[PCAP_ERRBUF_SIZE];
+    if(snaplen == 0)
+        snaplen = 0xffff;
+
+    pcap_t** cap = pushpcapopen(L);
+    *cap = pcap_create(device, errbuf);
+    pcap_set_rfmon(*cap, 1);
+    pcap_set_snaplen(*cap, snaplen);
+    pcap_set_promisc(*cap, 0);
+    pcap_set_timeout(*cap, to_ms);
+    pcap_activate(*cap);
+
     return checkpcapopen(L, cap, errbuf);
 }
 
@@ -668,6 +701,7 @@ The libpcap version string, as returned from pcap_lib_version().
 static const luaL_reg pcap_module[] =
 {
     {"open_live", lpcap_open_live},
+    {"open_monitor", lpcap_open_monitor},
     {"open_offline", lpcap_open_offline},
     {"open_dead", lpcap_open_dead},
     {"tv2secs", lpcap_tv2secs},
