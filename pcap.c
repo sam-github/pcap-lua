@@ -49,7 +49,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 #if LUA_VERSION_NUM > 501
 #define luaL_reg luaL_Reg
-#endif 
+#endif
 
 static double tv2secs(struct timeval* tv)
 {
@@ -184,18 +184,101 @@ static void pcap_dlt_set(lua_State* L, const char* name, int number)
     lua_settable(L, -3);
 }
 
-/* TODO - add all the DLT values... */
 static void pcap_make_dlt(lua_State* L)
 {
     lua_newtable(L);
+#ifdef DLT_NULL
+    pcap_dlt_set(L, "NULL", DLT_NULL);
+#endif
 #ifdef DLT_EN10MB
     pcap_dlt_set(L, "EN10MB", DLT_EN10MB);
+#endif
+#ifdef DLT_AX25
+    pcap_dlt_set(L, "AX25", DLT_AX25);
+#endif
+#ifdef DLT_IEEE802
+    pcap_dlt_set(L, "IEEE802", DLT_IEEE802);
+#endif
+#ifdef DLT_ARCNET
+    pcap_dlt_set(L, "ARCNET", DLT_ARCNET);
+#endif
+#ifdef DLT_SLIP
+    pcap_dlt_set(L, "SLIP", DLT_SLIP);
+#endif
+#ifdef DLT_PPP
+    pcap_dlt_set(L, "PPP", DLT_PPP);
+#endif
+#ifdef DLT_FDDI
+    pcap_dlt_set(L, "FDDI", DLT_FDDI);
+#endif
+#ifdef DLT_PPP_SERIAL
+    pcap_dlt_set(L, "PPP_SERIAL", DLT_PPP_SERIAL);
+#endif
+#ifdef DLT_PPP_ETHER
+    pcap_dlt_set(L, "PPP_ETHER", DLT_PPP_ETHER);
+#endif
+#ifdef DLT_ATM_RFC1483
+    pcap_dlt_set(L, "ATM_RFC1483", DLT_ATM_RFC1483);
 #endif
 #ifdef DLT_RAW
     pcap_dlt_set(L, "RAW", DLT_RAW);
 #endif
+#ifdef DLT_C_HDLC
+    pcap_dlt_set(L, "C_HDLC", DLT_C_HDLC);
+#endif
+#ifdef DLT_IEEE802_11
+    pcap_dlt_set(L, "IEEE802_11", DLT_IEEE802_11);
+#endif
+#ifdef DLT_FRELAY
+    pcap_dlt_set(L, "FRELAY", DLT_FRELAY);
+#endif
+#ifdef DLT_LOOP
+    pcap_dlt_set(L, "LOOP", DLT_LOOP);
+#endif
 #ifdef DLT_LINUX_SLL
     pcap_dlt_set(L, "LINUX_SLL", DLT_LINUX_SLL);
+#endif
+#ifdef DLT_LTALK
+    pcap_dlt_set(L, "LTALK", DLT_LTALK);
+#endif
+#ifdef DLT_PFLOG
+    pcap_dlt_set(L, "PFLOG", DLT_PFLOG);
+#endif
+#ifdef DLT_PRISM_HEADER
+    pcap_dlt_set(L, "PRISM_HEADER", DLT_PRISM_HEADER);
+#endif
+#ifdef DLT_IP_OVER_FC
+    pcap_dlt_set(L, "IP_OVER_FC", DLT_IP_OVER_FC);
+#endif
+#ifdef DLT_SUNATM
+    pcap_dlt_set(L, "SUNATM", DLT_SUNATM);
+#endif
+#ifdef DLT_IEEE802_11_RADIO
+    pcap_dlt_set(L, "IEEE802_11_RADIO", DLT_IEEE802_11_RADIO);
+#endif
+#ifdef DLT_ARCNET_LINUX
+    pcap_dlt_set(L, "ARCNET_LINUX", DLT_ARCNET_LINUX);
+#endif
+#ifdef DLT_APPLE_IP_OVER_IEEE1394
+    pcap_dlt_set(L, "APPLE_IP_OVER_IEEE1394", DLT_APPLE_IP_OVER_IEEE1394);
+#endif
+#ifdef DLT_MTP2_WITH_PHDR
+    pcap_dlt_set(L, "MTP2_WITH_PHDR", DLT_MTP2_WITH_PHDR);
+#endif
+#ifdef DLT_MTP2
+    pcap_dlt_set(L, "MTP2", DLT_MTP2);
+#endif
+#ifdef DLT_MTP3
+    pcap_dlt_set(L, "MTP3", DLT_MTP3);
+#endif
+#ifdef DLT_SCCP
+    pcap_dlt_set(L, "SCCP", DLT_SCCP);
+#endif
+#ifdef DLT_DOCSIS
+    pcap_dlt_set(L, "DOCSIS", DLT_DOCSIS);
+#endif
+#ifdef DLT_LINUX_IRDA
+    pcap_dlt_set(L, "LINUX_IRDA", DLT_LINUX_IRDA);
 #endif
 #ifdef DLT_USER0
     pcap_dlt_set(L, "USER0", DLT_USER0);
@@ -208,6 +291,222 @@ static void pcap_make_dlt(lua_State* L)
 #endif
 #ifdef DLT_USER3
     pcap_dlt_set(L, "USER3", DLT_USER3);
+#endif
+#ifdef DLT_USER4
+    pcap_dlt_set(L, "USER4", DLT_USER4);
+#endif
+#ifdef DLT_USER5
+    pcap_dlt_set(L, "USER5", DLT_USER5);
+#endif
+#ifdef DLT_USER6
+    pcap_dlt_set(L, "USER6", DLT_USER6);
+#endif
+#ifdef DLT_USER7
+    pcap_dlt_set(L, "USER7", DLT_USER7);
+#endif
+#ifdef DLT_USER8
+    pcap_dlt_set(L, "USER8", DLT_USER8);
+#endif
+#ifdef DLT_USER9
+    pcap_dlt_set(L, "USER9", DLT_USER9);
+#endif
+#ifdef DLT_USER10
+    pcap_dlt_set(L, "USER10", DLT_USER10);
+#endif
+#ifdef DLT_USER11
+    pcap_dlt_set(L, "USER11", DLT_USER11);
+#endif
+#ifdef DLT_USER12
+    pcap_dlt_set(L, "USER12", DLT_USER12);
+#endif
+#ifdef DLT_USER13
+    pcap_dlt_set(L, "USER13", DLT_USER13);
+#endif
+#ifdef DLT_USER14
+    pcap_dlt_set(L, "USER14", DLT_USER14);
+#endif
+#ifdef DLT_USER15
+    pcap_dlt_set(L, "USER15", DLT_USER15);
+#endif
+#ifdef DLT_IEEE802_11_RADIO_AVS
+    pcap_dlt_set(L, "IEEE802_11_RADIO_AVS", DLT_IEEE802_11_RADIO_AVS);
+#endif
+#ifdef DLT_BACNET_MS_TP
+    pcap_dlt_set(L, "BACNET_MS_TP", DLT_BACNET_MS_TP);
+#endif
+#ifdef DLT_PPP_PPPD
+    pcap_dlt_set(L, "PPP_PPPD", DLT_PPP_PPPD);
+#endif
+#ifdef DLT_GPRS_LLC
+    pcap_dlt_set(L, "GPRS_LLC", DLT_GPRS_LLC);
+#endif
+#ifdef DLT_GPF_T
+    pcap_dlt_set(L, "GPF_T", DLT_GPF_T);
+#endif
+#ifdef DLT_GPF_F
+    pcap_dlt_set(L, "GPF_F", DLT_GPF_F);
+#endif
+#ifdef DLT_LINUX_LAPD
+    pcap_dlt_set(L, "LINUX_LAPD", DLT_LINUX_LAPD);
+#endif
+#ifdef DLT_BLUETOOTH_HCI_H4
+    pcap_dlt_set(L, "BLUETOOTH_HCI_H4", DLT_BLUETOOTH_HCI_H4);
+#endif
+#ifdef DLT_USB_LINUX
+    pcap_dlt_set(L, "USB_LINUX", DLT_USB_LINUX);
+#endif
+#ifdef DLT_PPI
+    pcap_dlt_set(L, "PPI", DLT_PPI);
+#endif
+#ifdef DLT_IEEE802_15_4
+    pcap_dlt_set(L, "IEEE802_15_4", DLT_IEEE802_15_4);
+#endif
+#ifdef DLT_SITA
+    pcap_dlt_set(L, "SITA", DLT_SITA);
+#endif
+#ifdef DLT_ERF
+    pcap_dlt_set(L, "ERF", DLT_ERF);
+#endif
+#ifdef DLT_BLUETOOTH_HCI_H4_WITH_PHDR
+    pcap_dlt_set(L, "BLUETOOTH_HCI_H4_WITH_PHDR", DLT_BLUETOOTH_HCI_H4_WITH_PHDR);
+#endif
+#ifdef DLT_AX25_KISS
+    pcap_dlt_set(L, "AX25_KISS", DLT_AX25_KISS);
+#endif
+#ifdef DLT_LAPD
+    pcap_dlt_set(L, "LAPD", DLT_LAPD);
+#endif
+#ifdef DLT_PPP_WITH_DIR
+    pcap_dlt_set(L, "PPP_WITH_DIR", DLT_PPP_WITH_DIR);
+#endif
+#ifdef DLT_C_HDLC_WITH_DIR
+    pcap_dlt_set(L, "C_HDLC_WITH_DIR", DLT_C_HDLC_WITH_DIR);
+#endif
+#ifdef DLT_FRELAY_WITH_DIR
+    pcap_dlt_set(L, "FRELAY_WITH_DIR", DLT_FRELAY_WITH_DIR);
+#endif
+#ifdef DLT_IPMB_LINUX
+    pcap_dlt_set(L, "IPMB_LINUX", DLT_IPMB_LINUX);
+#endif
+#ifdef DLT_IEEE802_15_4_NONASK_PHY
+    pcap_dlt_set(L, "IEEE802_15_4_NONASK_PHY", DLT_IEEE802_15_4_NONASK_PHY);
+#endif
+#ifdef DLT_USB_LINUX_MMAPPED
+    pcap_dlt_set(L, "USB_LINUX_MMAPPED", DLT_USB_LINUX_MMAPPED);
+#endif
+#ifdef DLT_FC_2
+    pcap_dlt_set(L, "FC_2", DLT_FC_2);
+#endif
+#ifdef DLT_FC_2_WITH_FRAME_DELIMS
+    pcap_dlt_set(L, "FC_2_WITH_FRAME_DELIMS", DLT_FC_2_WITH_FRAME_DELIMS);
+#endif
+#ifdef DLT_IPNET
+    pcap_dlt_set(L, "IPNET", DLT_IPNET);
+#endif
+#ifdef DLT_CAN_SOCKETCAN
+    pcap_dlt_set(L, "CAN_SOCKETCAN", DLT_CAN_SOCKETCAN);
+#endif
+#ifdef DLT_IPV4
+    pcap_dlt_set(L, "IPV4", DLT_IPV4);
+#endif
+#ifdef DLT_IPV6
+    pcap_dlt_set(L, "IPV6", DLT_IPV6);
+#endif
+#ifdef DLT_IEEE802_15_4_NOFCS
+    pcap_dlt_set(L, "IEEE802_15_4_NOFCS", DLT_IEEE802_15_4_NOFCS);
+#endif
+#ifdef DLT_DBUS
+    pcap_dlt_set(L, "DBUS", DLT_DBUS);
+#endif
+#ifdef DLT_DVB_CI
+    pcap_dlt_set(L, "DVB_CI", DLT_DVB_CI);
+#endif
+#ifdef DLT_MUX27010
+    pcap_dlt_set(L, "MUX27010", DLT_MUX27010);
+#endif
+#ifdef DLT_STANAG_5066_D_PDU
+    pcap_dlt_set(L, "STANAG_5066_D_PDU", DLT_STANAG_5066_D_PDU);
+#endif
+#ifdef DLT_NFLOG
+    pcap_dlt_set(L, "NFLOG", DLT_NFLOG);
+#endif
+#ifdef DLT_NETANALYZER
+    pcap_dlt_set(L, "NETANALYZER", DLT_NETANALYZER);
+#endif
+#ifdef DLT_NETANALYZER_TRANSPARENT
+    pcap_dlt_set(L, "NETANALYZER_TRANSPARENT", DLT_NETANALYZER_TRANSPARENT);
+#endif
+#ifdef DLT_IPOIB
+    pcap_dlt_set(L, "IPOIB", DLT_IPOIB);
+#endif
+#ifdef DLT_MPEG_2_TS
+    pcap_dlt_set(L, "MPEG_2_TS", DLT_MPEG_2_TS);
+#endif
+#ifdef DLT_NG40
+    pcap_dlt_set(L, "NG40", DLT_NG40);
+#endif
+#ifdef DLT_NFC_LLCP
+    pcap_dlt_set(L, "NFC_LLCP", DLT_NFC_LLCP);
+#endif
+#ifdef DLT_INFINIBAND
+    pcap_dlt_set(L, "INFINIBAND", DLT_INFINIBAND);
+#endif
+#ifdef DLT_SCTP
+    pcap_dlt_set(L, "SCTP", DLT_SCTP);
+#endif
+#ifdef DLT_USBPCAP
+    pcap_dlt_set(L, "USBPCAP", DLT_USBPCAP);
+#endif
+#ifdef DLT_RTAC_SERIAL
+    pcap_dlt_set(L, "RTAC_SERIAL", DLT_RTAC_SERIAL);
+#endif
+#ifdef DLT_BLUETOOTH_LE_LL
+    pcap_dlt_set(L, "BLUETOOTH_LE_LL", DLT_BLUETOOTH_LE_LL);
+#endif
+#ifdef DLT_NETLINK
+    pcap_dlt_set(L, "NETLINK", DLT_NETLINK);
+#endif
+#ifdef DLT_BLUETOOTH_LINUX_MONITOR
+    pcap_dlt_set(L, "BLUETOOTH_LINUX_MONITOR", DLT_BLUETOOTH_LINUX_MONITOR);
+#endif
+#ifdef DLT_BLUETOOTH_BREDR_BB
+    pcap_dlt_set(L, "BLUETOOTH_BREDR_BB", DLT_BLUETOOTH_BREDR_BB);
+#endif
+#ifdef DLT_BLUETOOTH_LE_LL_WITH_PHDR
+    pcap_dlt_set(L, "BLUETOOTH_LE_LL_WITH_PHDR", DLT_BLUETOOTH_LE_LL_WITH_PHDR);
+#endif
+#ifdef DLT_PROFIBUS_DL
+    pcap_dlt_set(L, "PROFIBUS_DL", DLT_PROFIBUS_DL);
+#endif
+#ifdef DLT_PKTAP
+    pcap_dlt_set(L, "PKTAP", DLT_PKTAP);
+#endif
+#ifdef DLT_EPON
+    pcap_dlt_set(L, "EPON", DLT_EPON);
+#endif
+#ifdef DLT_IPMI_HPM_2
+    pcap_dlt_set(L, "IPMI_HPM_2", DLT_IPMI_HPM_2);
+#endif
+#ifdef DLT_ZWAVE_R1_R2
+    pcap_dlt_set(L, "ZWAVE_R1_R2", DLT_ZWAVE_R1_R2);
+#endif
+#ifdef DLT_ZWAVE_R3
+    pcap_dlt_set(L, "ZWAVE_R3", DLT_ZWAVE_R3);
+#endif
+#ifdef DLT_WATTSTOPPER_DLM
+    pcap_dlt_set(L, "WATTSTOPPER_DLM", DLT_WATTSTOPPER_DLM);
+#endif
+#ifdef DLT_ISO_14443
+    pcap_dlt_set(L, "ISO_14443", DLT_ISO_14443);
+#endif
+#ifdef DLT_RDS
+    pcap_dlt_set(L, "RDS", DLT_RDS);
+#endif
+#ifdef DLT_USB_DARWIN
+    pcap_dlt_set(L, "USB_DARWIN", DLT_USB_DARWIN);
+#endif
+#ifdef DLT_SDLC
+    pcap_dlt_set(L, "SDLC", DLT_SDLC);
 #endif
 }
 
